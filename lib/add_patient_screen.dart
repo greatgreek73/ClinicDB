@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'patient_details_screen.dart';
+
 
 class AddPatientScreen extends StatefulWidget {
   @override
@@ -13,22 +15,27 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   final TextEditingController _priceController = TextEditingController();
 
   void _addPatientToFirestore() {
-    // Считываем значения из контроллеров и конвертируем их в нужные типы данных
     final String surname = _surnameController.text;
     final int age = int.parse(_ageController.text);
     final double price = double.parse(_priceController.text);
 
-    // Отправляем собранные данные в коллекцию 'patients' Firestore
     FirebaseFirestore.instance.collection('patients').add({
       'surname': surname,
       'age': age,
       'price': price,
     }).then((result) {
-      // Выводим в консоль сообщение об успешном добавлении и закрываем экран
       print('Пациент добавлен');
-      Navigator.of(context).pop();
+      String newPatientId = result.id; // Получаем ID нового пациента
+
+      // ↓↓↓ Изменения начинаются здесь ↓↓↓
+      // Переходим на экран деталей пациента
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => PatientDetailsScreen(patientId: newPatientId),
+        ),
+      );
+      // ↑↑↑ Изменения заканчиваются здесь ↑↑↑
     }).catchError((error) {
-      // Выводим сообщение об ошибке, если что-то пошло не так
       print('Ошибка добавления пациента: $error');
     });
   }
@@ -80,7 +87,6 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  // Проверяем, валидны ли данные формы
                   if (_formKey.currentState!.validate()) {
                     _addPatientToFirestore(); // Вызываем функцию для сохранения данных
                   }
@@ -94,3 +100,5 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     );
   }
 }
+
+// Убедитесь, что у вас есть экран деталей пациента (PatientDetailsScreen) для корректной работы этого кода.

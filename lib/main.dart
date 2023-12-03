@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // Убедитесь, что файл сгенерирован FlutterFire CLI
 import 'add_patient_screen.dart';
+import 'patient_details_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Обязательно для инициализации Firebase
