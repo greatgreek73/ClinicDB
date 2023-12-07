@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // Убедитесь, что файл сгенерирован FlutterFire CLI
 import 'add_patient_screen.dart';
 import 'patient_details_screen.dart';
+import 'search_screen.dart';
 
 
 void main() async {
@@ -34,16 +35,33 @@ class LoginPage extends StatelessWidget {
         title: Text('clinicdb - Вход'),
       ),
       body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => AddPatientScreen()),
-            );
-          },
-          child: Text('Добавить Пациента'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min, // Чтобы выровнять кнопки по центру
+          children: <Widget>[
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AddPatientScreen()),
+                );
+              },
+              child: Text('Добавить Пациента'),
+            ),
+            SizedBox(height: 20), // Добавляем немного пространства между кнопками
+            ElevatedButton(
+              onPressed: () {
+                // Действие для перехода на экран поиска
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SearchScreen()),
+                );
+              },
+              child: Text('Поиск'),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
