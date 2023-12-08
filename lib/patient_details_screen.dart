@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'edit_patient_screen.dart'; // Убедитесь, что экран редактирования импортирован
+import 'edit_patient_screen.dart'; // Экран редактирования пациента
+import 'add_treatment_screen.dart'; // Экран добавления лечения
 
 class PatientDetailsScreen extends StatelessWidget {
   final String patientId;
@@ -21,7 +22,6 @@ class PatientDetailsScreen extends StatelessWidget {
                   builder: (context) => EditPatientScreen(patientId: patientId),
                 ),
               ).then((_) {
-                // Обновление страницы после возвращения из экрана редактирования
                 Navigator.of(context).pop();
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -29,6 +29,16 @@ class PatientDetailsScreen extends StatelessWidget {
                   ),
                 );
               });
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => AddTreatmentScreen(patientId: patientId),
+                ),
+              );
             },
           ),
           IconButton(
@@ -45,6 +55,7 @@ class PatientDetailsScreen extends StatelessWidget {
               var patientData = snapshot.data!.data() as Map<String, dynamic>;
               return ListView(
                 children: <Widget>[
+                  // Основная информация о пациенте
                   ListTile(
                     title: Text('Фамилия'),
                     subtitle: Text(patientData['surname'] ?? 'Нет данных'),
@@ -74,6 +85,32 @@ class PatientDetailsScreen extends StatelessWidget {
                     subtitle: patientData['photoUrl'] != null
                       ? Image.network(patientData['photoUrl'])
                       : Text('Нет фото'),
+                  ),
+                  // Раздел отображения лечений
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('treatments')
+                        .where('patientId', isEqualTo: patientId)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Text('Ошибка загрузки данных о лечении');
+                      }
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return CircularProgressIndicator();
+                      }
+                      return Column(
+                        children: snapshot.data!.docs.map((DocumentSnapshot document) {
+                          Map<String, dynamic> treatmentData = document.data()! as Map<String, dynamic>;
+                          return Card(
+                            child: ListTile(
+                              title: Text(treatmentData['description'] ?? ''),
+                              subtitle: Text('Стоимость: ${treatmentData['cost']}'),
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
                   ),
                 ],
               );
@@ -105,8 +142,8 @@ class PatientDetailsScreen extends StatelessWidget {
               child: Text('Удалить'),
               onPressed: () {
                 FirebaseFirestore.instance.collection('patients').doc(patientId).delete().then((_) {
-                  Navigator.of(context).pop(); // Закрыть диалоговое окно
-                  Navigator.of(context).pop(); // Вернуться назад
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop();
                 });
               },
             ),
