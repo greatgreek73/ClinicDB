@@ -55,22 +55,17 @@ class PatientDetailsScreen extends StatelessWidget {
               var patientData = snapshot.data!.data() as Map<String, dynamic>;
               return ListView(
                 children: <Widget>[
-                  // Основная информация о пациенте
                   ListTile(
                     title: Text('Фамилия'),
                     subtitle: Text(patientData['surname'] ?? 'Нет данных'),
                   ),
                   ListTile(
-                    title: Text('Возраст'),
-                    subtitle: Text('${patientData['age']}'),
-                  ),
-                  ListTile(
-                    title: Text('Цена'),
-                    subtitle: Text('${patientData['price']}'),
-                  ),
-                  ListTile(
                     title: Text('Имя'),
                     subtitle: Text(patientData['name'] ?? 'Нет данных'),
+                  ),
+                  ListTile(
+                    title: Text('Возраст'),
+                    subtitle: Text('${patientData['age']}'),
                   ),
                   ListTile(
                     title: Text('Город'),
@@ -81,12 +76,15 @@ class PatientDetailsScreen extends StatelessWidget {
                     subtitle: Text(patientData['phone'] ?? 'Нет данных'),
                   ),
                   ListTile(
+                    title: Text('Цена'),
+                    subtitle: Text('${patientData['price']}'),
+                  ),
+                  ListTile(
                     title: Text('Фото'),
                     subtitle: patientData['photoUrl'] != null
                       ? Image.network(patientData['photoUrl'])
                       : Text('Нет фото'),
                   ),
-                  // Раздел отображения лечений
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('treatments')
@@ -104,8 +102,8 @@ class PatientDetailsScreen extends StatelessWidget {
                           Map<String, dynamic> treatmentData = document.data()! as Map<String, dynamic>;
                           return Card(
                             child: ListTile(
-                              title: Text(treatmentData['description'] ?? ''),
-                              subtitle: Text('Стоимость: ${treatmentData['cost']}'),
+                              title: Text(treatmentData['treatmentType'] ?? 'Лечение'),
+                              subtitle: Text('Зуб: ${treatmentData['toothNumber']}'),
                             ),
                           );
                         }).toList(),
