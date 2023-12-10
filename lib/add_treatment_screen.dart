@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // Для форматирования выбранной даты
 
 class AddTreatmentScreen extends StatefulWidget {
   final String patientId;
@@ -14,9 +15,24 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
   final _formKey = GlobalKey<FormState>();
   String? selectedTreatment;
   List<int> selectedTeeth = []; // Изменим на список для множественного выбора
+  DateTime selectedDate = DateTime.now(); // Инициализируем с текущей датой
 
   final List<String> treatments = ['Кариес', 'Имплантация', 'Удаление'];
   final int teethCount = 32; // Предположим, у нас 32 зуба
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,31 +44,35 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
         padding: EdgeInsets.all(8.0),
         child: Form(
           key: _formKey,
-          child: Column(
-            children: <Widget>[
-              Wrap(
-                spacing: 8.0,
-                children: treatments.map((treatment) {
-                  return ChoiceChip(
-                    label: Text(treatment),
-                    selected: selectedTreatment == treatment,
-                    onSelected: (bool selected) {
-                      setState(() {
-                        if (selected) {
-                          selectedTreatment = treatment;
-                        }
-                      });
-                    },
-                  );
-                }).toList(),
-              ),
-              SizedBox(height: 20),
-              Expanded(
-                child: GridView.builder(
+          child: SingleChildScrollView(
+            child: Column(
+              children: <Widget>[
+                Wrap(
+                  spacing: 8.0,
+                  children: treatments.map((treatment) {
+                    return ChoiceChip(
+                      label: Text(treatment),
+                      selected: selectedTreatment == treatment,
+                      onSelected: (bool selected) {
+                        setState(() {
+                          if (selected) {
+                            selectedTreatment = treatment;
+                          } else {
+                            selectedTreatment = null;
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                SizedBox(height: 20),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
                   itemCount: teethCount,
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 8, // Увеличиваем количество столбцов
-                    childAspectRatio: 1.0, // Соотношение сторон для каждого элемента
+                    crossAxisCount: 8,
+                    childAspectRatio: 1.0,
                   ),
                   itemBuilder: (context, index) {
                     return GestureDetector(
@@ -79,24 +99,35 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
                     );
                   },
                 ),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate() && selectedTreatment != null && selectedTeeth.isNotEmpty) {
-                    for (var tooth in selectedTeeth) {
-                      FirebaseFirestore.instance.collection('treatments').add({
-                        'patientId': widget.patientId,
-                        'treatmentType': selectedTreatment,
-                        'toothNumber': tooth,
-                      });
+                ListTile(
+                  title: Text('Выбранная дата: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
+                  trailing: Icon(Icons.calendar_today),
+                  onTap: () => _selectDate(context),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate() && selectedTreatment != null && selectedTeeth.isNotEmpty) {
+                      // Добавление информации о лечении в Firestore
+                      for (var tooth in selectedTeeth) {
+                        FirebaseFirestore.instance.collection('treatments').add({
+                          'patientId': widget.patientId,
+                          'treatmentType': selectedTreatment,
+                          'toothNumber': tooth,
+                          'date': Timestamp.fromDate(selectedDate), // Добавляем выбранную дату
+                        });
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Лечение добавлено'),
+                        ),
+                      );
+                      Navigator.of(context).pop();
                     }
-                    print("Treatments Added");
-                    Navigator.of(context).pop();
-                  }
-                },
-                child: Text('Добавить лечение'),
-              ),
-            ],
+                  },
+                  child: Text('Добавить лечение'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

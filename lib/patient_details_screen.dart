@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_patient_screen.dart'; // Экран редактирования пациента
 import 'add_treatment_screen.dart'; // Экран добавления лечения
+import 'package:intl/intl.dart'; // Для форматирования дат
 
 class PatientDetailsScreen extends StatelessWidget {
   final String patientId;
@@ -89,30 +90,44 @@ class PatientDetailsScreen extends StatelessWidget {
                     stream: FirebaseFirestore.instance
                         .collection('treatments')
                         .where('patientId', isEqualTo: patientId)
+                        .orderBy('date', descending: true)
                         .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
+                    builder: (context, treatmentSnapshot) {
+                      if (treatmentSnapshot.hasError) {
+                        // Логирование ошибки
+                        print("Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}");
                         return Text('Ошибка загрузки данных о лечении');
                       }
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                      if (treatmentSnapshot.connectionState == ConnectionState.waiting) {
                         return CircularProgressIndicator();
                       }
-                      return Column(
-                        children: snapshot.data!.docs.map((DocumentSnapshot document) {
-                          Map<String, dynamic> treatmentData = document.data()! as Map<String, dynamic>;
-                          return Card(
-                            child: ListTile(
-                              title: Text(treatmentData['treatmentType'] ?? 'Лечение'),
-                              subtitle: Text('Зуб: ${treatmentData['toothNumber']}'),
-                            ),
+                      var treatments = _groupTreatmentsByDate(treatmentSnapshot.data!.docs);
+
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        itemCount: treatments.keys.length,
+                        itemBuilder: (context, index) {
+                          DateTime date = treatments.keys.elementAt(index);
+                          List<Map<String, dynamic>> treatmentsForDate = treatments[date]!;
+                          return ExpansionTile(
+                            title: Text(DateFormat('yyyy-MM-dd').format(date)),
+                            children: treatmentsForDate.map((treatmentData) {
+                              return ListTile(
+                                title: Text(treatmentData['treatmentType']),
+                                subtitle: Text('Зуб: ${treatmentData['toothNumber']}'),
+                              );
+                            }).toList(),
                           );
-                        }).toList(),
+                        },
                       );
                     },
                   ),
                 ],
               );
             } else if (snapshot.hasError) {
+              // Логирование ошибки
+              print("Ошибка получения данных пациента: ${snapshot.error}");
               return Text('Ошибка: ${snapshot.error}');
             }
           }
@@ -120,6 +135,23 @@ class PatientDetailsScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Map<DateTime, List<Map<String, dynamic>>> _groupTreatmentsByDate(List<DocumentSnapshot> docs) {
+    Map<DateTime, List<Map<String, dynamic>>> groupedTreatments = {};
+    for (var doc in docs) {
+      var data = doc.data() as Map<String, dynamic>?;
+      if (data != null && data['date'] is Timestamp) {
+        var date = (data['date'] as Timestamp).toDate();
+        if (!groupedTreatments.containsKey(date)) {
+          groupedTreatments[date] = [];
+        }
+        groupedTreatments[date]!.add(data);
+      } else {
+        print("Документ не содержит даты или дата не является Timestamp: $data");
+      }
+    }
+    return groupedTreatments;
   }
 
   void _confirmDeletion(BuildContext context, String patientId) {

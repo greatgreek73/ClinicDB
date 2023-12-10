@@ -1,9 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Treatment {
   String id;
   String patientId;
   String treatmentType;
   int toothNumber;
   double cost;
+  DateTime date; // Новое поле для даты лечения
 
   Treatment({
     required this.id,
@@ -11,6 +14,7 @@ class Treatment {
     required this.treatmentType,
     required this.toothNumber,
     required this.cost,
+    required this.date, // Требуем дату при инициализации
   });
 
   // Метод для создания объекта Treatment из данных Firestore
@@ -21,10 +25,11 @@ class Treatment {
       treatmentType: firestore['treatmentType'],
       toothNumber: firestore['toothNumber'],
       cost: firestore['cost'],
+      date: (firestore['date'] as Timestamp).toDate(), // Преобразуем Timestamp в DateTime
     );
   }
 
-  // Метод для преобразования объекта Treatment в Map
+  // Метод для преобразования объекта Treatment в Map для Firestore
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -32,6 +37,7 @@ class Treatment {
       'treatmentType': treatmentType,
       'toothNumber': toothNumber,
       'cost': cost,
+      'date': Timestamp.fromDate(date), // Сохраняем DateTime как Timestamp
     };
   }
 }
