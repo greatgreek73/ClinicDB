@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // Убедитесь, что файл сгенерирован FlutterFire CLI
+import 'firebase_options.dart';
 import 'add_patient_screen.dart';
-import 'patient_details_screen.dart';
 import 'search_screen.dart';
-
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Обязательно для инициализации Firebase
+  WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb) {
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.black,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ));
+  }
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform, // Использует настройки из файла firebase_options.dart
+    options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(ClinicDBApp());
 }
@@ -17,12 +24,19 @@ void main() async {
 class ClinicDBApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'clinicdb',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: LoginPage(),
+    return ScreenUtilInit(
+      designSize: Size(360, 690),
+      builder: (BuildContext context, Widget? child) {
+        return MaterialApp(
+          title: 'clinicdb',
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+            scaffoldBackgroundColor: Colors.black,
+            appBarTheme: AppBarTheme(color: Colors.black),
+          ),
+          home: LoginPage(),
+        );
+      },
     );
   }
 }
@@ -30,38 +44,52 @@ class ClinicDBApp extends StatelessWidget {
 class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    ScreenUtil.init(context, designSize: Size(360, 690));
+    var orientation = MediaQuery.of(context).orientation;
+
+    double buttonWidth = orientation == Orientation.portrait ? 280.w : 480.w;
+    double buttonHeight = orientation == Orientation.portrait ? 52.h : 72.h;
+    double buttonFontSize = orientation == Orientation.portrait ? 16.sp : 20.sp;
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text('clinicdb - Вход'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min, // Чтобы выровнять кнопки по центру
-          children: <Widget>[
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AddPatientScreen()),
-                );
-              },
-              child: Text('Добавить Пациента'),
-            ),
-            SizedBox(height: 20), // Добавляем немного пространства между кнопками
-            ElevatedButton(
-              onPressed: () {
-                // Действие для перехода на экран поиска
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SearchScreen()),
-                );
-              },
-              child: Text('Поиск'),
-            ),
-          ],
+      body: Container(
+        color: Color(0xFF000000),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              _buildButton(context, 'Добавить Пациента', () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => AddPatientScreen()));
+              }, buttonWidth, buttonHeight, buttonFontSize),
+              SizedBox(height: 20.h),
+              _buildButton(context, 'Поиск', () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => SearchScreen()));
+              }, buttonWidth, buttonHeight, buttonFontSize),
+              SizedBox(height: 20.h),
+              _buildButton(context, 'Дополнительная Кнопка 1', () {}, buttonWidth, buttonHeight, buttonFontSize),
+              SizedBox(height: 20.h),
+              _buildButton(context, 'Дополнительная Кнопка 2', () {}, buttonWidth, buttonHeight, buttonFontSize),
+              SizedBox(height: 20.h),
+              _buildButton(context, 'Дополнительная Кнопка 3', () {}, buttonWidth, buttonHeight, buttonFontSize),
+            ],
+          ),
         ),
       ),
     );
   }
-}
 
+    Widget _buildButton(BuildContext context, String title, VoidCallback onPressed, double width, double height, double fontSize) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        primary: Color(0xFF0F5BF1),
+        onPrimary: Colors.white,
+        shadowColor: Color(0x40000000),
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.r)),
+        fixedSize: Size(width, height),
+      ),
+      onPressed: onPressed,
+      child: Text(title, style: TextStyle(fontSize: fontSize)),
+    );
+  }
+}

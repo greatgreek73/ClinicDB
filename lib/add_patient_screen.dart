@@ -12,10 +12,10 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   final TextEditingController _surnameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
-
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  bool _isMale = true; // Добавлена переменная для отслеживания выбора пола
 
   void _addPatientToFirestore() {
     final String surname = _surnameController.text;
@@ -24,6 +24,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     final String name = _nameController.text;
     final String city = _cityController.text;
     final String phone = _phoneController.text;
+    final String gender = _isMale ? 'Мужской' : 'Женский'; // Добавлен параметр пола
 
     FirebaseFirestore.instance.collection('patients').add({
       'surname': surname,
@@ -32,7 +33,8 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
       'name': name,
       'city': city,
       'phone': phone,
-      'searchKey': surname.toLowerCase(), // Автоматически генерируемый searchKey
+      'gender': gender, // Сохраняем пол в Firestore
+      'searchKey': surname.toLowerCase(),
     }).then((result) {
       print('Пациент добавлен');
       String newPatientId = result.id;
@@ -102,7 +104,39 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
               TextFormField(
                 controller: _phoneController,
                 decoration: InputDecoration(labelText: 'Телефон'),
+                keyboardType: TextInputType.number,
               ),
+
+              // Виджеты для выбора пола
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  GestureDetector(
+                    onTap: () => setState(() => _isMale = true),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
+                      decoration: BoxDecoration(
+                        color: _isMale ? Colors.blue : Colors.grey,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text('Мужской', style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                  SizedBox(width: 20),
+                  GestureDetector(
+                    onTap: () => setState(() => _isMale = false),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
+                      decoration: BoxDecoration(
+                        color: !_isMale ? Colors.pink : Colors.grey,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text('Женский', style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+              
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
