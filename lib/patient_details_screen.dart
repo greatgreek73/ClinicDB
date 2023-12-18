@@ -83,57 +83,66 @@ class PatientDetailsScreen extends StatelessWidget {
                   ListTile(
                     title: Text('Фото'),
                     subtitle: patientData['photoUrl'] != null
-                      ? Image.network(patientData['photoUrl'])
-                      : Text('Нет фото'),
+                      ? Image.network(
+                          patientData['photoUrl'],
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        )
+                      : SizedBox(
+                          height: 100,
+                          child: Center(child: Text('Нет фото')),
+                        ),
                   ),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('treatments')
-                        .where('patientId', isEqualTo: patientId)
-                        .orderBy('date', descending: true)
-                        .snapshots(),
-                    builder: (context, treatmentSnapshot) {
-                      if (treatmentSnapshot.hasError) {
-                        // Логирование ошибки
-                        print("Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}");
-                        return Text('Ошибка загрузки данных о лечении');
-                      }
-                      if (treatmentSnapshot.connectionState == ConnectionState.waiting) {
-                        return CircularProgressIndicator();
-                      }
-                      var treatments = _groupTreatmentsByDate(treatmentSnapshot.data!.docs);
-
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        physics: NeverScrollableScrollPhysics(),
-                        itemCount: treatments.keys.length,
-                        itemBuilder: (context, index) {
-                          DateTime date = treatments.keys.elementAt(index);
-                          List<Map<String, dynamic>> treatmentsForDate = treatments[date]!;
-                          return ExpansionTile(
-                            title: Text(DateFormat('yyyy-MM-dd').format(date)),
-                            children: treatmentsForDate.map((treatmentData) {
-                              return ListTile(
-                                title: Text(treatmentData['treatmentType']),
-                                subtitle: Text('Зуб: ${treatmentData['toothNumber']}'),
-                              );
-                            }).toList(),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                  _buildTreatmentsSection(patientId),
                 ],
               );
             } else if (snapshot.hasError) {
-              // Логирование ошибки
-              print("Ошибка получения данных пациента: ${snapshot.error}");
               return Text('Ошибка: ${snapshot.error}');
             }
           }
           return Center(child: CircularProgressIndicator());
         },
       ),
+    );
+  }
+
+  Widget _buildTreatmentsSection(String patientId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('treatments')
+          .where('patientId', isEqualTo: patientId)
+          .orderBy('date', descending: true)
+          .snapshots(),
+      builder: (context, treatmentSnapshot) {
+        if (treatmentSnapshot.hasError) {
+          return Text('Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}');
+        }
+        if (treatmentSnapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        var treatments = _groupTreatmentsByDate(treatmentSnapshot.data!.docs);
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: treatments.keys.length,
+          itemBuilder: (context, index) {
+            DateTime date = treatments.keys.elementAt(index);
+            List<Map<String, dynamic>> treatmentsForDate = treatments[date]!;
+            return ExpansionTile(
+              title: Text(DateFormat('yyyy-MM-dd').format(date)),
+              children: treatmentsForDate.map((treatmentData) {
+                return ListTile(
+                  title: Text(treatmentData['treatmentType']),
+                  subtitle: Text('Зуб: ${treatmentData['toothNumber']}'),
+                );
+              }).toList(),
+            );
+          },
+        );
+      },
     );
   }
 

@@ -47,13 +47,13 @@ class _SearchScreenState extends State<SearchScreen> {
               stream: (searchQuery == "")
                   ? FirebaseFirestore.instance
                       .collection('patients')
-                      .orderBy('surname') // Сортировка по фамилии
+                      .orderBy('searchKey') // Сортировка по фамилии
                       .snapshots()
                   : FirebaseFirestore.instance
                       .collection('patients')
+                      .orderBy('searchKey')
                       .where('searchKey', isGreaterThanOrEqualTo: searchQuery)
                       .where('searchKey', isLessThan: searchQuery + '\uF8FF')
-                      .orderBy('surname') // Сортировка по фамилии
                       .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasData) {

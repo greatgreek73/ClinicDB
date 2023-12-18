@@ -31,8 +31,8 @@ class ClinicDBApp extends StatelessWidget {
           title: 'clinicdb',
           theme: ThemeData(
             primarySwatch: Colors.blue,
-            scaffoldBackgroundColor: Colors.black,
-            appBarTheme: AppBarTheme(color: Colors.black),
+            scaffoldBackgroundColor: Colors.white,
+            appBarTheme: AppBarTheme(color: Colors.white),
           ),
           home: LoginPage(),
         );
@@ -66,11 +66,11 @@ class LoginPage extends StatelessWidget {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => SearchScreen()));
               }, buttonWidth, buttonHeight, buttonFontSize),
               SizedBox(height: 20.h),
-              _buildButton(context, 'Дополнительная Кнопка 1', () {}, buttonWidth, buttonHeight, buttonFontSize),
+              _buildButton(context, 'Отчеты', () {}, buttonWidth, buttonHeight, buttonFontSize),
               SizedBox(height: 20.h),
-              _buildButton(context, 'Дополнительная Кнопка 2', () {}, buttonWidth, buttonHeight, buttonFontSize),
+              _buildButton(context, 'Статистика', () {}, buttonWidth, buttonHeight, buttonFontSize),
               SizedBox(height: 20.h),
-              _buildButton(context, 'Дополнительная Кнопка 3', () {}, buttonWidth, buttonHeight, buttonFontSize),
+              _buildButton(context, 'Напоминания', () {}, buttonWidth, buttonHeight, buttonFontSize),
             ],
           ),
         ),
