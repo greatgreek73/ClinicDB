@@ -56,6 +56,22 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     final String phone = _phoneController.text;
     final String gender = _isMale ? 'Мужской' : 'Женский';
 
+    // Проверка на существование пациента с такой же фамилией и именем
+    final querySnapshot = await FirebaseFirestore.instance
+      .collection('patients')
+      .where('surname', isEqualTo: surname)
+      .where('name', isEqualTo: name)
+      .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Пациент с такой фамилией и именем уже существует.'),
+        ),
+      );
+      return;
+    }
+
     String? imageUrl;
     if (_image != null) {
       imageUrl = await _uploadImageToStorage(_image!);
