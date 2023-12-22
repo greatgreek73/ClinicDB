@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_patient_screen.dart'; // Экран редактирования пациента
-import 'add_treatment_screen.dart'; // Экран добавления лечения
+import 'add_treatment_screen.dart'; // Экран добавления/редактирования лечения
 import 'package:intl/intl.dart'; // Для форматирования дат
 
 class PatientDetailsScreen extends StatelessWidget {
@@ -137,6 +137,22 @@ class PatientDetailsScreen extends StatelessWidget {
                 return ListTile(
                   title: Text(treatmentData['treatmentType']),
                   subtitle: Text('Зуб: ${treatmentData['toothNumber']}'),
+                  trailing: IconButton(
+                    icon: Icon(Icons.edit),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => AddTreatmentScreen(
+                            patientId: patientId,
+                            treatmentData: {
+                              ...treatmentData,
+                              'id': treatmentData['reference'].id, // ID для обновления
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 );
               }).toList(),
             );
@@ -149,12 +165,14 @@ class PatientDetailsScreen extends StatelessWidget {
   Map<DateTime, List<Map<String, dynamic>>> _groupTreatmentsByDate(List<DocumentSnapshot> docs) {
     Map<DateTime, List<Map<String, dynamic>>> groupedTreatments = {};
     for (var doc in docs) {
-      var data = doc.data() as Map<String, dynamic>?;
+      var data = doc.data() as Map<String, dynamic>;
       if (data != null && data['date'] is Timestamp) {
         var date = (data['date'] as Timestamp).toDate();
         if (!groupedTreatments.containsKey(date)) {
           groupedTreatments[date] = [];
         }
+        // Добавляем ссылку на документ в данные
+        data['reference'] = doc.reference;
         groupedTreatments[date]!.add(data);
       } else {
         print("Документ не содержит даты или дата не является Timestamp: $data");

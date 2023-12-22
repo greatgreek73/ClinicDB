@@ -4,8 +4,9 @@ import 'package:intl/intl.dart'; // Для форматирования выбр
 
 class AddTreatmentScreen extends StatefulWidget {
   final String patientId;
+  final Map<String, dynamic>? treatmentData;
 
-  AddTreatmentScreen({required this.patientId});
+  AddTreatmentScreen({required this.patientId, this.treatmentData});
 
   @override
   _AddTreatmentScreenState createState() => _AddTreatmentScreenState();
@@ -19,6 +20,25 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
 
   final List<String> treatments = ['Кариес', 'Имплантация', 'Удаление'];
   final int teethCount = 32; // Предположим, у нас 32 зуба
+
+  @override
+  void initState() {
+    super.initState();
+    // Если переданы данные для редактирования, инициализируем поля этими данными
+    if (widget.treatmentData != null) {
+      selectedTreatment = widget.treatmentData!['treatmentType'];
+      
+      // Убедитесь, что selectedTeeth является списком
+      if (widget.treatmentData!['toothNumber'] is List) {
+        selectedTeeth = List<int>.from(widget.treatmentData!['toothNumber']);
+      } else {
+        // Если это одно число, создайте список с одним элементом
+        selectedTeeth = [widget.treatmentData!['toothNumber']];
+      }
+
+      selectedDate = (widget.treatmentData!['date'] as Timestamp).toDate();
+    }
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -38,7 +58,7 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Добавить Лечение'),
+        title: Text(widget.treatmentData == null ? 'Добавить Лечение' : 'Редактировать Лечение'),
       ),
       body: Padding(
         padding: EdgeInsets.all(8.0),
@@ -55,11 +75,7 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
                       selected: selectedTreatment == treatment,
                       onSelected: (bool selected) {
                         setState(() {
-                          if (selected) {
-                            selectedTreatment = treatment;
-                          } else {
-                            selectedTreatment = null;
-                          }
+                          selectedTreatment = selected ? treatment : null;
                         });
                       },
                     );
@@ -107,24 +123,33 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
                 ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate() && selectedTreatment != null && selectedTeeth.isNotEmpty) {
-                      // Добавление информации о лечении в Firestore
-                      for (var tooth in selectedTeeth) {
-                        FirebaseFirestore.instance.collection('treatments').add({
+                      final collection = FirebaseFirestore.instance.collection('treatments');
+                      if (widget.treatmentData != null) {
+                        // Обновляем существующую запись лечения
+                        final docId = widget.treatmentData!['id']; // Идентификатор документа для обновления
+                        collection.doc(docId).update({
+                          'treatmentType': selectedTreatment,
+                          'toothNumber': selectedTeeth,
+                          'date': Timestamp.fromDate(selectedDate),
+                        });
+                      } else {
+                        // Добавление новой записи лечения в Firestore
+                        collection.add({
                           'patientId': widget.patientId,
                           'treatmentType': selectedTreatment,
-                          'toothNumber': tooth,
-                          'date': Timestamp.fromDate(selectedDate), // Добавляем выбранную дату
+                          'toothNumber': selectedTeeth,
+                          'date': Timestamp.fromDate(selectedDate),
                         });
                       }
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Лечение добавлено'),
+                          content: Text(widget.treatmentData == null ? 'Лечение добавлено' : 'Лечение обновлено'),
                         ),
                       );
                       Navigator.of(context).pop();
                     }
                   },
-                  child: Text('Добавить лечение'),
+                  child: Text(widget.treatmentData == null ? 'Добавить лечение' : 'Обновить лечение'),
                 ),
               ],
             ),
