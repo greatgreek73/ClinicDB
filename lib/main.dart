@@ -6,6 +6,7 @@ import 'search_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'reports_screen.dart'; // Предполагается, что вы создали этот файл с классом ReportsScreen
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,7 +67,9 @@ class LoginPage extends StatelessWidget {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => SearchScreen()));
               }, buttonWidth, buttonHeight, buttonFontSize),
               SizedBox(height: 20.h),
-              _buildButton(context, 'Отчеты', () {}, buttonWidth, buttonHeight, buttonFontSize),
+              _buildButton(context, 'Отчеты', () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsScreen()));
+              }, buttonWidth, buttonHeight, buttonFontSize),
               SizedBox(height: 20.h),
               _buildButton(context, 'Статистика', () {}, buttonWidth, buttonHeight, buttonFontSize),
               SizedBox(height: 20.h),

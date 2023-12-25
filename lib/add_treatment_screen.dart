@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart'; // Для форматирования выбранной даты
+import 'package:intl/intl.dart';
 
 class AddTreatmentScreen extends StatefulWidget {
   final String patientId;
@@ -15,27 +15,18 @@ class AddTreatmentScreen extends StatefulWidget {
 class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
   final _formKey = GlobalKey<FormState>();
   String? selectedTreatment;
-  List<int> selectedTeeth = []; // Изменим на список для множественного выбора
-  DateTime selectedDate = DateTime.now(); // Инициализируем с текущей датой
+  List<int> selectedTeeth = [];
+  DateTime selectedDate = DateTime.now();
 
   final List<String> treatments = ['Кариес', 'Имплантация', 'Удаление'];
-  final int teethCount = 32; // Предположим, у нас 32 зуба
+  final int teethCount = 32;
 
   @override
   void initState() {
     super.initState();
-    // Если переданы данные для редактирования, инициализируем поля этими данными
     if (widget.treatmentData != null) {
       selectedTreatment = widget.treatmentData!['treatmentType'];
-      
-      // Убедитесь, что selectedTeeth является списком
-      if (widget.treatmentData!['toothNumber'] is List) {
-        selectedTeeth = List<int>.from(widget.treatmentData!['toothNumber']);
-      } else {
-        // Если это одно число, создайте список с одним элементом
-        selectedTeeth = [widget.treatmentData!['toothNumber']];
-      }
-
+      selectedTeeth = List<int>.from(widget.treatmentData!['toothNumber'] ?? []);
       selectedDate = (widget.treatmentData!['date'] as Timestamp).toDate();
     }
   }
@@ -58,7 +49,7 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.treatmentData == null ? 'Добавить Лечение' : 'Редактировать Лечение'),
+        title: Text(widget.treatmentData == null ? 'Добавить лечение' : 'Редактировать лечение'),
       ),
       body: Padding(
         padding: EdgeInsets.all(8.0),
@@ -67,6 +58,7 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: <Widget>[
+                // Choice chips to select treatment type
                 Wrap(
                   spacing: 8.0,
                   children: treatments.map((treatment) {
@@ -81,7 +73,7 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
                     );
                   }).toList(),
                 ),
-                SizedBox(height: 20),
+                // Grid view to select teeth
                 GridView.builder(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
@@ -102,50 +94,61 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
                       child: Container(
                         margin: EdgeInsets.all(2),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.blue),
-                          color: selectedTeeth.contains(index + 1) ? Colors.blue[300] : Colors.white,
+                          border: Border.all(color: selectedTeeth.contains(index + 1) ? Colors.blue : Colors.grey),
+                          color: selectedTeeth.contains(index + 1) ? Colors.blue[200] : Colors.white,
                         ),
                         child: Center(
                           child: Text(
                             '${index + 1}',
-                            style: TextStyle(fontSize: 10),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: selectedTeeth.contains(index + 1) ? Colors.white : Colors.black,
+                            ),
                           ),
                         ),
                       ),
                     );
                   },
                 ),
+                // Date picker
                 ListTile(
                   title: Text('Выбранная дата: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
                   trailing: Icon(Icons.calendar_today),
                   onTap: () => _selectDate(context),
                 ),
+                // Submit button
                 ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (_formKey.currentState!.validate() && selectedTreatment != null && selectedTeeth.isNotEmpty) {
                       final collection = FirebaseFirestore.instance.collection('treatments');
-                      if (widget.treatmentData != null) {
-                        // Обновляем существующую запись лечения
-                        final docId = widget.treatmentData!['id']; // Идентификатор документа для обновления
-                        collection.doc(docId).update({
+                      if (widget.treatmentData != null && widget.treatmentData!.containsKey('id')) {
+                        // Обновление существующего документа
+                        await collection.doc(widget.treatmentData!['id']).update({
                           'treatmentType': selectedTreatment,
-                          'toothNumber': selectedTeeth,
+                          'toothNumber': selectedTeeth.first, // Используем только первый элемент списка
                           'date': Timestamp.fromDate(selectedDate),
                         });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Данные о лечении обновлены'),
+                          ),
+                        );
                       } else {
-                        // Добавление новой записи лечения в Firestore
-                        collection.add({
-                          'patientId': widget.patientId,
-                          'treatmentType': selectedTreatment,
-                          'toothNumber': selectedTeeth,
-                          'date': Timestamp.fromDate(selectedDate),
-                        });
+                        // Добавление нового документа
+                        for (var tooth in selectedTeeth) {
+                          await collection.add({
+                            'patientId': widget.patientId,
+                            'treatmentType': selectedTreatment,
+                            'toothNumber': tooth, // Сохраняем каждый зуб как отдельное значение
+                            'date': Timestamp.fromDate(selectedDate),
+                          });
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Данные о лечении добавлены'),
+                          ),
+                        );
                       }
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(widget.treatmentData == null ? 'Лечение добавлено' : 'Лечение обновлено'),
-                        ),
-                      );
                       Navigator.of(context).pop();
                     }
                   },

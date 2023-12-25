@@ -22,14 +22,7 @@ class PatientDetailsScreen extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (context) => EditPatientScreen(patientId: patientId),
                 ),
-              ).then((_) {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => PatientDetailsScreen(patientId: patientId),
-                  ),
-                );
-              });
+              );
             },
           ),
           IconButton(
@@ -145,7 +138,11 @@ class PatientDetailsScreen extends StatelessWidget {
                           builder: (context) => AddTreatmentScreen(
                             patientId: patientId,
                             treatmentData: {
-                              ...treatmentData,
+                              'treatmentType': treatmentData['treatmentType'],
+                              'toothNumber': treatmentData['toothNumber'] is Iterable 
+                                  ? List.from(treatmentData['toothNumber']) 
+                                  : [treatmentData['toothNumber']],
+                              'date': treatmentData['date'],
                               'id': treatmentData['reference'].id, // ID для обновления
                             },
                           ),
@@ -166,17 +163,11 @@ class PatientDetailsScreen extends StatelessWidget {
     Map<DateTime, List<Map<String, dynamic>>> groupedTreatments = {};
     for (var doc in docs) {
       var data = doc.data() as Map<String, dynamic>;
-      if (data != null && data['date'] is Timestamp) {
-        var date = (data['date'] as Timestamp).toDate();
-        if (!groupedTreatments.containsKey(date)) {
-          groupedTreatments[date] = [];
-        }
-        // Добавляем ссылку на документ в данные
-        data['reference'] = doc.reference;
-        groupedTreatments[date]!.add(data);
-      } else {
-        print("Документ не содержит даты или дата не является Timestamp: $data");
-      }
+      var date = (data['date'] as Timestamp).toDate();
+      groupedTreatments.putIfAbsent(date, () => []).add({
+        ...data,
+        'reference': doc.reference, // Сохраняем ссылку на документ Firestore
+      });
     }
     return groupedTreatments;
   }
@@ -191,16 +182,13 @@ class PatientDetailsScreen extends StatelessWidget {
           actions: <Widget>[
             TextButton(
               child: Text('Отмена'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+              onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
               child: Text('Удалить'),
               onPressed: () {
                 FirebaseFirestore.instance.collection('patients').doc(patientId).delete().then((_) {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pop();
+                  Navigator.of(context).popUntil((route) => route.isFirst);
                 });
               },
             ),
