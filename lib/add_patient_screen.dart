@@ -15,7 +15,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _surnameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
-  final TextEditingController _priceController = TextEditingController();
+  final MoneyMaskedTextController _priceController = MoneyMaskedTextController(decimalSeparator: '', thousandSeparator: '.', precision: 0, leftSymbol: '');
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   final MaskedTextController _phoneController = MaskedTextController(mask: '(000) 000-0000');
@@ -48,15 +48,17 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
       return;
     }
 
-    final String surname = _surnameController.text;
+    String surname = _surnameController.text.trim();
+    surname = surname[0].toUpperCase() + surname.substring(1);
+    String name = _nameController.text.trim();
+    name = name[0].toUpperCase() + name.substring(1);
+
     final int age = int.parse(_ageController.text);
-    final double price = double.parse(_priceController.text);
-    final String name = _nameController.text;
+    final double price = _priceController.numberValue;
     final String city = _cityController.text;
     final String phone = _phoneController.text;
     final String gender = _isMale ? 'Мужской' : 'Женский';
 
-    // Проверка на существование пациента с такой же фамилией и именем
     final querySnapshot = await FirebaseFirestore.instance
       .collection('patients')
       .where('surname', isEqualTo: surname)
@@ -115,7 +117,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
             children: <Widget>[
               _buildTextFormField(_surnameController, 'Фамилия'),
               _buildTextFormField(_ageController, 'Возраст', isNumber: true),
-              _buildTextFormField(_priceController, 'Цена', isNumber: true),
+              _buildPriceFormField(_priceController, 'Цена'),
               _buildTextFormField(_nameController, 'Имя'),
               _buildTextFormField(_cityController, 'Город'),
               _buildPhoneFormField(),
@@ -147,6 +149,33 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Пожалуйста, введите $label';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPriceFormField(MoneyMaskedTextController controller, String label) {
+    return TextFormField(
+      controller: controller,
+      style: TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.grey),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.white),
+        ),
+      ),
+      keyboardType: TextInputType.number,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Пожалуйста, введите $label';
+        }
+        if (controller.numberValue <= 0) {
+          return 'Введите положительное число';
         }
         return null;
       },
