@@ -18,8 +18,13 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
   List<int> selectedTeeth = [];
   DateTime selectedDate = DateTime.now();
 
-  final List<String> treatments = ['Кариес', 'Имплантация', 'Удаление'];
-  final int teethCount = 32;
+  final List<String> treatments = ['Кариес', 'Имплантация', 'Удаление', 'Сканирование', 'Эндо'];
+  final List<String> teethNumbers = [
+  '11', '12', '13', '14', '15', '16', '17', '18',
+  '21', '22', '23', '24', '25', '26', '27', '28',
+  '31', '32', '33', '34', '35', '36', '37', '38',
+  '41', '42', '43', '44', '45', '46', '47', '48'
+];
 
   @override
   void initState() {
@@ -75,41 +80,44 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
                 ),
                 // Grid view to select teeth
                 GridView.builder(
-                  shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
-                  itemCount: teethCount,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 8,
-                    childAspectRatio: 1.0,
-                  ),
-                  itemBuilder: (context, index) {
-                    return GestureDetector(
-                      onTap: () => setState(() {
-                        if (selectedTeeth.contains(index + 1)) {
-                          selectedTeeth.remove(index + 1);
-                        } else {
-                          selectedTeeth.add(index + 1);
-                        }
-                      }),
-                      child: Container(
-                        margin: EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: selectedTeeth.contains(index + 1) ? Colors.blue : Colors.grey),
-                          color: selectedTeeth.contains(index + 1) ? Colors.blue[200] : Colors.white,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${index + 1}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: selectedTeeth.contains(index + 1) ? Colors.white : Colors.black,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+  shrinkWrap: true,
+  physics: NeverScrollableScrollPhysics(),
+  itemCount: teethNumbers.length, // Используем размер списка teethNumbers
+  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: 8,
+    childAspectRatio: 1.0,
+  ),
+  itemBuilder: (context, index) {
+    String toothNumber = teethNumbers[index];
+    return GestureDetector(
+      onTap: () => setState(() {
+        int toothIndex = int.parse(toothNumber);
+        if (selectedTeeth.contains(toothIndex)) {
+          selectedTeeth.remove(toothIndex);
+        } else {
+          selectedTeeth.add(toothIndex);
+        }
+      }),
+      child: Container(
+        margin: EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          border: Border.all(color: selectedTeeth.contains(int.parse(toothNumber)) ? Colors.blue : Colors.grey),
+          color: selectedTeeth.contains(int.parse(toothNumber)) ? Colors.blue[200] : Colors.white,
+        ),
+        child: Center(
+          child: Text(
+            toothNumber,
+            style: TextStyle(
+              fontSize: 12,
+              color: selectedTeeth.contains(int.parse(toothNumber)) ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
+      ),
+    );
+  },
+),
+
                 // Date picker
                 ListTile(
                   title: Text('Выбранная дата: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),

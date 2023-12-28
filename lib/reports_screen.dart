@@ -51,6 +51,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 _buildStatisticsWidget('Имплантация'),
                 _buildStatisticsWidget('Удаление'),
                 _buildStatisticsWidget('Кариес'),
+                _buildStatisticsWidget('Сканирование'),
+                _buildStatisticsWidget('Эндо'),
               ],
             ),
           ),
