@@ -4,9 +4,8 @@ import 'firebase_options.dart';
 import 'add_patient_screen.dart';
 import 'search_screen.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'reports_screen.dart'; // Предполагается, что вы создали этот файл с классом ReportsScreen
+import 'package:flutter/foundation.dart';
+import 'reports_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,19 +24,14 @@ void main() async {
 class ClinicDBApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return ScreenUtilInit(
-      designSize: Size(360, 690),
-      builder: (BuildContext context, Widget? child) {
-        return MaterialApp(
-          title: 'clinicdb',
-          theme: ThemeData(
-            primarySwatch: Colors.blue,
-            scaffoldBackgroundColor: Colors.white,
-            appBarTheme: AppBarTheme(color: Colors.white),
-          ),
-          home: LoginPage(),
-        );
-      },
+    return MaterialApp(
+      title: 'clinicdb',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: AppBarTheme(color: Colors.white),
+      ),
+      home: LoginPage(),
     );
   }
 }
@@ -45,50 +39,70 @@ class ClinicDBApp extends StatelessWidget {
 class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    ScreenUtil.init(context, designSize: Size(360, 690));
-    var orientation = MediaQuery.of(context).orientation;
-
-    double buttonWidth = orientation == Orientation.portrait ? 280.w : 480.w;
-    double buttonHeight = orientation == Orientation.portrait ? 52.h : 72.h;
-    double buttonFontSize = orientation == Orientation.portrait ? 16.sp : 20.sp;
+    // Задаем фиксированные размеры для кнопок
+    double buttonWidth = 350;
+    double buttonHeight = 60;
+    double buttonFontSize = 18;
 
     return Scaffold(
       body: Container(
-        color: Color(0xFF000000),
+        width: double.infinity,
+        height: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: 20),
+        color: Colors.black,
         child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              _buildButton(context, 'Добавить Пациента', () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => AddPatientScreen()));
-              }, buttonWidth, buttonHeight, buttonFontSize),
-              SizedBox(height: 20.h),
-              _buildButton(context, 'Поиск', () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => SearchScreen()));
-              }, buttonWidth, buttonHeight, buttonFontSize),
-              SizedBox(height: 20.h),
-              _buildButton(context, 'Отчеты', () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsScreen()));
-              }, buttonWidth, buttonHeight, buttonFontSize),
-              SizedBox(height: 20.h),
-              _buildButton(context, 'Статистика', () {}, buttonWidth, buttonHeight, buttonFontSize),
-              SizedBox(height: 20.h),
-              _buildButton(context, 'Напоминания', () {}, buttonWidth, buttonHeight, buttonFontSize),
-            ],
+          child: Container(
+            width: 870,
+            height: 300,
+            decoration: ShapeDecoration(
+              color: Color(0xFF252525),
+              shape: RoundedRectangleBorder(
+                side: BorderSide(width: 1, color: Color(0xFF5A5959)),
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    _buildButton(context, 'Добавить Пациента', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => AddPatientScreen()));
+                    }, buttonWidth, buttonHeight, buttonFontSize),
+                    SizedBox(width: 40), // Отступ между кнопками
+                    _buildButton(context, 'Поиск', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => SearchScreen()));
+                    }, buttonWidth, buttonHeight, buttonFontSize),
+                  ],
+                ),
+                SizedBox(height: 20), // Отступ между рядами
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    _buildButton(context, 'Отчеты', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsScreen()));
+                    }, buttonWidth, buttonHeight, buttonFontSize),
+                    SizedBox(width: 40), // Отступ между кнопками
+                    _buildButton(context, 'Расписание', () {}, buttonWidth, buttonHeight, buttonFontSize),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-    Widget _buildButton(BuildContext context, String title, VoidCallback onPressed, double width, double height, double fontSize) {
+  Widget _buildButton(BuildContext context, String title, VoidCallback onPressed, double width, double height, double fontSize) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         primary: Color(0xFF0F5BF1),
         onPrimary: Colors.white,
         shadowColor: Color(0x40000000),
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.r)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         fixedSize: Size(width, height),
       ),
       onPressed: onPressed,
