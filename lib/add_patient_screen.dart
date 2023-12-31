@@ -103,8 +103,8 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double fieldWidth = 350;
-    Color labelColor = Color(0xFFFFC947);
+    double fieldWidth = 650;
+    Color labelColor = Color(0xFF151515);
 
     return Scaffold(
       appBar: AppBar(
