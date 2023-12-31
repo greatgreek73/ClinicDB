@@ -18,7 +18,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   final MoneyMaskedTextController _priceController = MoneyMaskedTextController(decimalSeparator: '', thousandSeparator: '.', precision: 0, leftSymbol: '');
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
-  final MaskedTextController _phoneController = MaskedTextController(mask: '(000) 000-0000');
+  final MaskedTextController _phoneController = MaskedTextController(mask: '(000) 000-00-00');
   bool _isMale = true;
   File? _image;
 
@@ -103,7 +103,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double fieldWidth = MediaQuery.of(context).size.width * 0.8;
+    double fieldWidth = 350;
     Color labelColor = Color(0xFFFFC947);
 
     return Scaffold(
@@ -112,25 +112,39 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
         backgroundColor: Colors.black,
       ),
       backgroundColor: Colors.black,
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: <Widget>[
-              _buildFieldWithPadding(_buildTextFormField(_surnameController, 'Фамилия', labelColor), fieldWidth),
-              _buildFieldWithPadding(_buildTextFormField(_ageController, 'Возраст', labelColor, isNumber: true), fieldWidth),
-              _buildFieldWithPadding(_buildPriceFormField(_priceController, 'Цена', labelColor), fieldWidth),
-              _buildFieldWithPadding(_buildTextFormField(_nameController, 'Имя', labelColor), fieldWidth),
-              _buildFieldWithPadding(_buildTextFormField(_cityController, 'Город', labelColor), fieldWidth),
-              _buildFieldWithPadding(_buildPhoneFormField(labelColor), fieldWidth),
-              SizedBox(height: 40),
-              _buildGenderRow(Color(0xFF0F5BF1)),
-              SizedBox(height: 40),
-              _buildImageSection(),
-              SizedBox(height: 40),
-              _buildSaveButton(Color(0xFF0F5BF1)),
-            ],
+      body: Center(
+        child: Container(
+          width: 670,
+          height: double.infinity,
+          decoration: ShapeDecoration(
+            color: Color(0xFF252525),
+            shape: RoundedRectangleBorder(
+              side: BorderSide(width: 1, color: Color(0xFF5A5959)),
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  _buildFieldWithPadding(_buildTextFormField(_surnameController, 'Фамилия', labelColor), fieldWidth),
+                  _buildFieldWithPadding(_buildTextFormField(_ageController, 'Возраст', labelColor, isNumber: true), fieldWidth),
+                  _buildFieldWithPadding(_buildPriceFormField(_priceController, 'Цена', labelColor), fieldWidth),
+                  _buildFieldWithPadding(_buildTextFormField(_nameController, 'Имя', labelColor), fieldWidth),
+                  _buildFieldWithPadding(_buildTextFormField(_cityController, 'Город', labelColor), fieldWidth),
+                  _buildFieldWithPadding(_buildPhoneFormField(labelColor), fieldWidth),
+                  SizedBox(height: 40),
+                  _buildGenderRow(Color(0xFF0F5BF1)),
+                  SizedBox(height: 40),
+                  _buildImageSection(),
+                  SizedBox(height: 40),
+                  _buildSaveButton(),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -215,8 +229,8 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
       children: [
         if (_image != null)
           SizedBox(
-            width: 40,  // Ограничение размера изображения
-            height: 40, // Ограничение размера изображения
+            width: 40,
+            height: 40,
             child: Image.file(_image!, fit: BoxFit.cover),
           ),
         ElevatedButton(
@@ -228,13 +242,22 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     );
   }
 
-  Widget _buildSaveButton(Color customColor) {
+  Widget _buildSaveButton() {
+    double buttonWidth = 350; // Ширина кнопки
+    double buttonHeight = 60; // Высота кнопки
+    double buttonFontSize = 18; // Размер шрифта кнопки
+
     return ElevatedButton(
-      onPressed: _addPatientToFirestore,
-      child: Text('Сохранить', style: TextStyle(color: Colors.white)),
       style: ElevatedButton.styleFrom(
-        primary: customColor,
+        primary: Color(0xFF0F5BF1),
+        onPrimary: Colors.white,
+        shadowColor: Color(0x40000000),
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        fixedSize: Size(buttonWidth, buttonHeight),
       ),
+      onPressed: _addPatientToFirestore,
+      child: Text('Сохранить', style: TextStyle(fontSize: buttonFontSize)),
     );
   }
 }
