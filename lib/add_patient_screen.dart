@@ -103,6 +103,9 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
 
   @override
   Widget build(BuildContext context) {
+    double fieldWidth = MediaQuery.of(context).size.width * 0.8;
+    Color labelColor = Color(0xFFFFC947);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Добавить Пациента', style: TextStyle(color: Colors.white)),
@@ -115,15 +118,18 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: <Widget>[
-              _buildTextFormField(_surnameController, 'Фамилия'),
-              _buildTextFormField(_ageController, 'Возраст', isNumber: true),
-              _buildPriceFormField(_priceController, 'Цена'),
-              _buildTextFormField(_nameController, 'Имя'),
-              _buildTextFormField(_cityController, 'Город'),
-              _buildPhoneFormField(),
-              _buildGenderRow(),
+              _buildFieldWithPadding(_buildTextFormField(_surnameController, 'Фамилия', labelColor), fieldWidth),
+              _buildFieldWithPadding(_buildTextFormField(_ageController, 'Возраст', labelColor, isNumber: true), fieldWidth),
+              _buildFieldWithPadding(_buildPriceFormField(_priceController, 'Цена', labelColor), fieldWidth),
+              _buildFieldWithPadding(_buildTextFormField(_nameController, 'Имя', labelColor), fieldWidth),
+              _buildFieldWithPadding(_buildTextFormField(_cityController, 'Город', labelColor), fieldWidth),
+              _buildFieldWithPadding(_buildPhoneFormField(labelColor), fieldWidth),
+              SizedBox(height: 40),
+              _buildGenderRow(Color(0xFF0F5BF1)),
+              SizedBox(height: 40),
               _buildImageSection(),
-              _buildSaveButton(),
+              SizedBox(height: 40),
+              _buildSaveButton(Color(0xFF0F5BF1)),
             ],
           ),
         ),
@@ -131,18 +137,28 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     );
   }
 
-  Widget _buildTextFormField(TextEditingController controller, String label, {bool isNumber = false}) {
+  Widget _buildFieldWithPadding(Widget field, double width) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10.0),
+      child: SizedBox(width: width, child: field),
+    );
+  }
+
+  Widget _buildTextFormField(TextEditingController controller, String label, Color labelColor, {bool isNumber = false}) {
     return TextFormField(
       controller: controller,
       style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.grey),
-        enabledBorder: OutlineInputBorder(
+        labelStyle: TextStyle(color: labelColor),
+        enabledBorder: UnderlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
         ),
-        focusedBorder: OutlineInputBorder(
+        focusedBorder: UnderlineInputBorder(
           borderSide: BorderSide(color: Colors.white),
+        ),
+        border: UnderlineInputBorder(
+          borderSide: BorderSide(color: Colors.grey),
         ),
       ),
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
@@ -155,58 +171,15 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     );
   }
 
-  Widget _buildPriceFormField(MoneyMaskedTextController controller, String label) {
-    return TextFormField(
-      controller: controller,
-      style: TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: Colors.grey),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.white),
-        ),
-      ),
-      keyboardType: TextInputType.number,
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Пожалуйста, введите $label';
-        }
-        if (controller.numberValue <= 0) {
-          return 'Введите положительное число';
-        }
-        return null;
-      },
-    );
+  Widget _buildPriceFormField(MoneyMaskedTextController controller, String label, Color labelColor) {
+    return _buildTextFormField(controller, label, labelColor, isNumber: true);
   }
 
-  Widget _buildPhoneFormField() {
-    return TextFormField(
-      controller: _phoneController,
-      style: TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: 'Телефон',
-        labelStyle: TextStyle(color: Colors.grey),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.white),
-        ),
-      ),
-      keyboardType: TextInputType.phone,
-      validator: (value) {
-        if (value == null || value.isEmpty || !RegExp(r'\(\d{3}\) \d{3}-\d{4}').hasMatch(value)) {
-          return 'Введите корректный номер телефона';
-        }
-        return null;
-      },
-    );
+  Widget _buildPhoneFormField(Color labelColor) {
+    return _buildTextFormField(_phoneController, 'Телефон', labelColor);
   }
 
-  Widget _buildGenderRow() {
+  Widget _buildGenderRow(Color customColor) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
@@ -215,7 +188,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
           child: Container(
             padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
             decoration: BoxDecoration(
-              color: _isMale ? Colors.blue : Colors.grey,
+              color: _isMale ? customColor : Colors.grey,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text('Мужской', style: TextStyle(color: Colors.white)),
@@ -227,7 +200,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
           child: Container(
             padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
             decoration: BoxDecoration(
-              color: !_isMale ? Colors.pink : Colors.grey,
+              color: !_isMale ? customColor : Colors.grey,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text('Женский', style: TextStyle(color: Colors.white)),
@@ -242,8 +215,8 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
       children: [
         if (_image != null)
           SizedBox(
-            width: 200,
-            height: 200,
+            width: 40,  // Ограничение размера изображения
+            height: 40, // Ограничение размера изображения
             child: Image.file(_image!, fit: BoxFit.cover),
           ),
         ElevatedButton(
@@ -255,11 +228,13 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(Color customColor) {
     return ElevatedButton(
       onPressed: _addPatientToFirestore,
       child: Text('Сохранить', style: TextStyle(color: Colors.white)),
-      style: ElevatedButton.styleFrom(primary: Colors.grey),
+      style: ElevatedButton.styleFrom(
+        primary: customColor,
+      ),
     );
   }
 }
