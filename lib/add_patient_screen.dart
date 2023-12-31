@@ -111,13 +111,13 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
         title: Text('Добавить Пациента', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
       ),
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.white,
       body: Center(
         child: Container(
           width: 670,
           height: double.infinity,
           decoration: ShapeDecoration(
-            color: Color(0xFF252525),
+            color: Color(0xFFF1F1F1),
             shape: RoundedRectangleBorder(
               side: BorderSide(width: 1, color: Color(0xFF5A5959)),
               borderRadius: BorderRadius.circular(20),

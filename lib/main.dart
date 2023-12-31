@@ -49,16 +49,17 @@ class LoginPage extends StatelessWidget {
         width: double.infinity,
         height: double.infinity,
         padding: EdgeInsets.symmetric(horizontal: 20),
-        color: Colors.black,
+        color: Colors.white,
         child: Center(
           child: Container(
             width: 870,
             height: 300,
             decoration: ShapeDecoration(
-              color: Color(0xFF252525),
+              color: Color(0xFFF1F1F1),
               shape: RoundedRectangleBorder(
-                side: BorderSide(width: 1, color: Color(0xFF5A5959)),
+                side: BorderSide(width: 1, color: Color(0xFF514646)),
                 borderRadius: BorderRadius.circular(20),
+              
               ),
             ),
             child: Column(
