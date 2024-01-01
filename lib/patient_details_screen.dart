@@ -123,33 +123,13 @@ class PatientDetailsScreen extends StatelessWidget {
           itemCount: treatments.keys.length,
           itemBuilder: (context, index) {
             DateTime date = treatments.keys.elementAt(index);
-            List<Map<String, dynamic>> treatmentsForDate = treatments[date]!;
+            var treatmentsForDate = treatments[date]!;
             return ExpansionTile(
               title: Text(DateFormat('yyyy-MM-dd').format(date)),
-              children: treatmentsForDate.map((treatmentData) {
+              children: treatmentsForDate.map((treatmentInfo) {
                 return ListTile(
-                  title: Text(treatmentData['treatmentType']),
-                  subtitle: Text('Зуб: ${treatmentData['toothNumber']}'),
-                  trailing: IconButton(
-                    icon: Icon(Icons.edit),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => AddTreatmentScreen(
-                            patientId: patientId,
-                            treatmentData: {
-                              'treatmentType': treatmentData['treatmentType'],
-                              'toothNumber': treatmentData['toothNumber'] is Iterable 
-                                  ? List.from(treatmentData['toothNumber']) 
-                                  : [treatmentData['toothNumber']],
-                              'date': treatmentData['date'],
-                              'id': treatmentData['reference'].id, // ID для обновления
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                  title: Text(treatmentInfo.treatmentType),
+                  subtitle: Text('Зубы: ${treatmentInfo.toothNumbers.join(", ")}'),
                 );
               }).toList(),
             );
@@ -159,16 +139,30 @@ class PatientDetailsScreen extends StatelessWidget {
     );
   }
 
-  Map<DateTime, List<Map<String, dynamic>>> _groupTreatmentsByDate(List<DocumentSnapshot> docs) {
-    Map<DateTime, List<Map<String, dynamic>>> groupedTreatments = {};
+  Map<DateTime, List<TreatmentInfo>> _groupTreatmentsByDate(List<DocumentSnapshot> docs) {
+    Map<DateTime, Map<String, List<int>>> tempGroupedTreatments = {};
+    Map<DateTime, List<TreatmentInfo>> groupedTreatments = {};
+
     for (var doc in docs) {
       var data = doc.data() as Map<String, dynamic>;
       var date = (data['date'] as Timestamp).toDate();
-      groupedTreatments.putIfAbsent(date, () => []).add({
-        ...data,
-        'reference': doc.reference, // Сохраняем ссылку на документ Firestore
-      });
+      var treatmentType = data['treatmentType'];
+      var toothNumber = data['toothNumber'];
+
+      if (!tempGroupedTreatments.containsKey(date)) {
+        tempGroupedTreatments[date] = {};
+      }
+      if (!tempGroupedTreatments[date]!.containsKey(treatmentType)) {
+        tempGroupedTreatments[date]![treatmentType] = [];
+      }
+      tempGroupedTreatments[date]![treatmentType]!.add(toothNumber);
     }
+
+    tempGroupedTreatments.forEach((date, treatments) {
+      List<TreatmentInfo> treatmentList = treatments.entries.map((entry) => TreatmentInfo(entry.key, entry.value)).toList();
+      groupedTreatments[date] = treatmentList;
+    });
+
     return groupedTreatments;
   }
 
@@ -197,4 +191,11 @@ class PatientDetailsScreen extends StatelessWidget {
       },
     );
   }
+}
+
+class TreatmentInfo {
+  String treatmentType;
+  List<int> toothNumbers;
+
+  TreatmentInfo(this.treatmentType, this.toothNumbers);
 }
