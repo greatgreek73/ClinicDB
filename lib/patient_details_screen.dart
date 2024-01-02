@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'edit_patient_screen.dart'; // Экран редактирования пациента
-import 'add_treatment_screen.dart'; // Экран добавления/редактирования лечения
-import 'package:intl/intl.dart'; // Для форматирования дат
+import 'edit_patient_screen.dart';
+import 'add_treatment_screen.dart';
+import 'package:intl/intl.dart';
 
 class PatientDetailsScreen extends StatelessWidget {
   final String patientId;
@@ -123,10 +123,10 @@ class PatientDetailsScreen extends StatelessWidget {
           itemCount: treatments.keys.length,
           itemBuilder: (context, index) {
             DateTime date = treatments.keys.elementAt(index);
-            var treatmentsForDate = treatments[date]!;
+            var treatmentInfos = treatments[date]!;
             return ExpansionTile(
               title: Text(DateFormat('yyyy-MM-dd').format(date)),
-              children: treatmentsForDate.map((treatmentInfo) {
+              children: treatmentInfos.map((treatmentInfo) {
                 return ListTile(
                   title: Text(treatmentInfo.treatmentType),
                   subtitle: Text('Зубы: ${treatmentInfo.toothNumbers.join(", ")}'),
@@ -140,28 +140,34 @@ class PatientDetailsScreen extends StatelessWidget {
   }
 
   Map<DateTime, List<TreatmentInfo>> _groupTreatmentsByDate(List<DocumentSnapshot> docs) {
-    Map<DateTime, Map<String, List<int>>> tempGroupedTreatments = {};
     Map<DateTime, List<TreatmentInfo>> groupedTreatments = {};
 
     for (var doc in docs) {
       var data = doc.data() as Map<String, dynamic>;
-      var date = (data['date'] as Timestamp).toDate();
+      var timestamp = data['date'] as Timestamp;
+      var dateWithoutTime = DateTime(timestamp.toDate().year, timestamp.toDate().month, timestamp.toDate().day);
       var treatmentType = data['treatmentType'];
       var toothNumber = data['toothNumber'];
 
-      if (!tempGroupedTreatments.containsKey(date)) {
-        tempGroupedTreatments[date] = {};
+      if (!groupedTreatments.containsKey(dateWithoutTime)) {
+        groupedTreatments[dateWithoutTime] = [];
       }
-      if (!tempGroupedTreatments[date]!.containsKey(treatmentType)) {
-        tempGroupedTreatments[date]![treatmentType] = [];
-      }
-      tempGroupedTreatments[date]![treatmentType]!.add(toothNumber);
-    }
 
-    tempGroupedTreatments.forEach((date, treatments) {
-      List<TreatmentInfo> treatmentList = treatments.entries.map((entry) => TreatmentInfo(entry.key, entry.value)).toList();
-      groupedTreatments[date] = treatmentList;
-    });
+      bool found = false;
+      for (var treatmentInfo in groupedTreatments[dateWithoutTime]!) {
+        if (treatmentInfo.treatmentType == treatmentType) {
+          found = true;
+          if (!treatmentInfo.toothNumbers.contains(toothNumber)) {
+            treatmentInfo.toothNumbers.add(toothNumber);
+          }
+          break;
+        }
+      }
+
+      if (!found) {
+        groupedTreatments[dateWithoutTime]!.add(TreatmentInfo(treatmentType, [toothNumber]));
+      }
+    }
 
     return groupedTreatments;
   }
