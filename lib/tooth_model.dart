@@ -1,3 +1,4 @@
+// Продолжайте использовать этот класс, если он используется в вашем приложении.
 class Tooth {
   int number;
   bool treated;
@@ -7,15 +8,13 @@ class Tooth {
     this.treated = false,
   });
 
-  // Метод для создания объекта Tooth из данных Firestore
   factory Tooth.fromFirestore(Map<String, dynamic> firestore) {
     return Tooth(
-      number: firestore['number'],
-      treated: firestore['treated'] ?? false,
+      number: firestore['number'] as int,
+      treated: firestore['treated'] as bool? ?? false,
     );
   }
 
-  // Метод для преобразования объекта Tooth в Map
   Map<String, dynamic> toMap() {
     return {
       'number': number,
