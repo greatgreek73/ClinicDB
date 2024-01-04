@@ -27,17 +27,30 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    if (widget.treatmentData != null) {
-      selectedTreatment = widget.treatmentData!['treatmentType'];
-      selectedTeeth = List<int>.from(widget.treatmentData!['toothNumber'] ?? []);
-
-      if (widget.treatmentData!['date'] != null) {
-        selectedDate = (widget.treatmentData!['date'] as Timestamp).toDate();
-      }
+void initState() {
+  super.initState();
+  if (widget.treatmentData != null) {
+    selectedTreatment = widget.treatmentData!['treatmentType'];
+    print('treatmentData: ${widget.treatmentData}');
+    
+    // Проверяем, что toothNumbers действительно является списком
+    if (widget.treatmentData!['toothNumbers'] is List) {
+      selectedTeeth = List<int>.from(widget.treatmentData!['toothNumbers']);
+    } else {
+      // Если это не список, логируем ошибку
+      print('Ошибка: toothNumbers не является списком');
+    }
+    
+    print('Selected Treatment: $selectedTreatment');
+    print('Selected Teeth: $selectedTeeth');
+    
+    if (widget.treatmentData!['date'] != null) {
+      selectedDate = (widget.treatmentData!['date'] as Timestamp).toDate();
+      print('Selected Date: $selectedDate');
     }
   }
+}
+
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(

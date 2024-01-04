@@ -161,7 +161,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   Widget _buildTextFormField(TextEditingController controller, String label, Color labelColor, {bool isNumber = false}) {
     return TextFormField(
       controller: controller,
-      style: TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.black),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: labelColor),
