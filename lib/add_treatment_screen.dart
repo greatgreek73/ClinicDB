@@ -18,7 +18,7 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
   List<int> selectedTeeth = [];
   DateTime selectedDate = DateTime.now();
 
-  final List<String> treatments = ['Кариес', 'Имплантация', 'Удаление', 'Сканирование', 'Эндо'];
+  final List<String> treatments = ['Кариес', 'Имплантация', 'Удаление', 'Сканирование', 'Эндо', 'Формирователь', 'PMMA', 'Коронка', 'Абатмент', 'Сдача PMMA', 'Сдача коронка', 'Сдача абатмент'];
   final List<String> teethNumbers = [
     '11', '12', '13', '14', '15', '16', '17', '18',
     '21', '22', '23', '24', '25', '26', '27', '28',
@@ -29,21 +29,27 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
   @override
 void initState() {
   super.initState();
+  // Логирование всей полученной информации о лечении
+  print('Received treatmentData: ${widget.treatmentData}');
+
   if (widget.treatmentData != null) {
+    // Логирование наличия идентификатора документа
+    if (widget.treatmentData!.containsKey('id')) {
+      print('Editing existing treatment with id: ${widget.treatmentData!['id']}');
+    } else {
+      print('Adding new treatment');
+    }
+
     selectedTreatment = widget.treatmentData!['treatmentType'];
-    print('treatmentData: ${widget.treatmentData}');
-    
-    // Проверяем, что toothNumbers действительно является списком
+    print('Selected Treatment: $selectedTreatment');
+
     if (widget.treatmentData!['toothNumbers'] is List) {
       selectedTeeth = List<int>.from(widget.treatmentData!['toothNumbers']);
     } else {
-      // Если это не список, логируем ошибку
       print('Ошибка: toothNumbers не является списком');
     }
-    
-    print('Selected Treatment: $selectedTreatment');
     print('Selected Teeth: $selectedTeeth');
-    
+
     if (widget.treatmentData!['date'] != null) {
       selectedDate = (widget.treatmentData!['date'] as Timestamp).toDate();
       print('Selected Date: $selectedDate');
@@ -148,8 +154,13 @@ void initState() {
                       };
 
                       if (widget.treatmentData != null && widget.treatmentData!.containsKey('id')) {
+                        // Дополнительное логирование перед обновлением
+                          print('Updating document with id: ${widget.treatmentData!['id']}');
+                          print('Data to update: $data');
                         await collection.doc(widget.treatmentData!['id']).update(data);
                       } else {
+                        // Дополнительное логирование перед добавлением нового документа
+                          print('Adding new document with data: $data');
                         await collection.add(data);
                       }
 

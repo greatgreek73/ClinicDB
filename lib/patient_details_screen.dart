@@ -144,51 +144,37 @@ class PatientDetailsScreen extends StatelessWidget {
     );
   }
 
-Map<DateTime, List<TreatmentInfo>> _groupTreatmentsByDate(List<DocumentSnapshot> docs) {
-  Map<DateTime, List<TreatmentInfo>> groupedTreatments = {};
+  Map<DateTime, List<TreatmentInfo>> _groupTreatmentsByDate(List<DocumentSnapshot> docs) {
+    Map<DateTime, List<TreatmentInfo>> groupedTreatments = {};
 
-  for (var doc in docs) {
-    var data = doc.data() as Map<String, dynamic>;
-    var timestamp = data['date'] as Timestamp;
-    var dateWithoutTime = DateTime(timestamp.toDate().year, timestamp.toDate().month, timestamp.toDate().day);
-    var treatmentType = data['treatmentType'];
-    var toothNumbers = data['toothNumber'] != null ? List<int>.from(data['toothNumber']) : <int>[];
+    for (var doc in docs) {
+      var data = doc.data() as Map<String, dynamic>;
+      var timestamp = data['date'] as Timestamp;
+      var dateWithoutTime = DateTime(timestamp.toDate().year, timestamp.toDate().month, timestamp.toDate().day);
+      var treatmentType = data['treatmentType'];
+      var toothNumbers = data['toothNumber'] != null ? List<int>.from(data['toothNumber']) : <int>[];
+      var documentId = doc.id; // Получаем id документа
 
-    // Логируем полученные данные
-    print('Дата лечения: $dateWithoutTime');
-    print('Тип лечения: $treatmentType');
-    print('Номера зубов: $toothNumbers');
+      if (!groupedTreatments.containsKey(dateWithoutTime)) {
+        groupedTreatments[dateWithoutTime] = [];
+      }
 
-    if (!groupedTreatments.containsKey(dateWithoutTime)) {
-      groupedTreatments[dateWithoutTime] = [];
-    }
+      bool found = false;
+      for (var treatmentInfo in groupedTreatments[dateWithoutTime]!) {
+        if (treatmentInfo.treatmentType == treatmentType) {
+          found = true;
+          treatmentInfo.toothNumbers.addAll(toothNumbers.where((num) => !treatmentInfo.toothNumbers.contains(num)));
+          break;
+        }
+      }
 
-    bool found = false;
-    for (var treatmentInfo in groupedTreatments[dateWithoutTime]!) {
-      if (treatmentInfo.treatmentType == treatmentType) {
-        found = true;
-        treatmentInfo.toothNumbers.addAll(toothNumbers.where((num) => !treatmentInfo.toothNumbers.contains(num)));
-        break;
+      if (!found) {
+        groupedTreatments[dateWithoutTime]!.add(TreatmentInfo(treatmentType, toothNumbers, documentId));
       }
     }
 
-    if (!found) {
-      groupedTreatments[dateWithoutTime]!.add(TreatmentInfo(treatmentType, toothNumbers));
-    }
+    return groupedTreatments;
   }
-
-  // Логируем итоговую группировку
-  groupedTreatments.forEach((date, treatments) {
-    print('Дата: $date');
-    treatments.forEach((treatmentInfo) {
-      print('Лечение: ${treatmentInfo.treatmentType}, Зубы: ${treatmentInfo.toothNumbers}');
-    });
-  });
-
-  return groupedTreatments;
-}
-
-
 
   void _confirmDeletion(BuildContext context, String patientId) {
     showDialog(
@@ -220,13 +206,15 @@ Map<DateTime, List<TreatmentInfo>> _groupTreatmentsByDate(List<DocumentSnapshot>
 class TreatmentInfo {
   String treatmentType;
   List<int> toothNumbers;
+  String? id; // Делаем id nullable
 
-  TreatmentInfo(this.treatmentType, this.toothNumbers);
+  TreatmentInfo(this.treatmentType, this.toothNumbers, this.id);
 
   Map<String, dynamic> toMap() {
     return {
       'treatmentType': treatmentType,
       'toothNumbers': toothNumbers,
+      'id': id // Теперь id может быть null
     };
   }
 }

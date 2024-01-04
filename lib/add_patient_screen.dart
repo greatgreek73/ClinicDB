@@ -229,8 +229,8 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
       children: [
         if (_image != null)
           SizedBox(
-            width: 40,
-            height: 40,
+            width: 80,
+            height: 80,
             child: Image.file(_image!, fit: BoxFit.cover),
           ),
         ElevatedButton(
