@@ -31,28 +31,13 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
   @override
   void initState() {
     super.initState();
-    print('Received treatmentData: ${widget.treatmentData}');
-
     if (widget.treatmentData != null) {
-      if (widget.treatmentData!.containsKey('id')) {
-        print('Editing existing treatment with id: ${widget.treatmentData!['id']}');
-      } else {
-        print('Adding new treatment');
-      }
-
       selectedTreatment = widget.treatmentData!['treatmentType'];
-      print('Selected Treatment: $selectedTreatment');
-
       if (widget.treatmentData!['toothNumbers'] is List) {
         selectedTeeth = List<int>.from(widget.treatmentData!['toothNumbers']);
-      } else {
-        print('Ошибка: toothNumbers не является списком');
       }
-      print('Selected Teeth: $selectedTeeth');
-
       if (widget.treatmentData!['date'] != null) {
         selectedDate = (widget.treatmentData!['date'] as Timestamp).toDate();
-        print('Selected Date: $selectedDate');
       }
     }
   }
@@ -79,6 +64,44 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
       );
       Navigator.of(context).pop();
     }
+  }
+
+  Future<void> _saveOrUpdateTreatment() async {
+    if (!_formKey.currentState!.validate() || selectedTreatment == null || selectedTeeth.isEmpty) {
+      return;
+    }
+
+    final collection = FirebaseFirestore.instance.collection('treatments');
+    DateTime selectedDateWithoutTime = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final existingDocumentSnapshot = await collection
+        .where('patientId', isEqualTo: widget.patientId)
+        .where('treatmentType', isEqualTo: selectedTreatment)
+        .where('date', isEqualTo: Timestamp.fromDate(selectedDateWithoutTime))
+        .limit(1)
+        .get();
+
+    Map<String, dynamic> data = {
+      'patientId': widget.patientId,
+      'treatmentType': selectedTreatment,
+      'toothNumber': selectedTeeth,
+      'date': Timestamp.fromDate(selectedDateWithoutTime),
+    };
+
+    if (existingDocumentSnapshot.docs.isNotEmpty) {
+      var existingDocument = existingDocumentSnapshot.docs.first;
+      var existingTeeth = List<int>.from(existingDocument.data()['toothNumber'] as List<dynamic>);
+      var updatedTeeth = {...existingTeeth.toSet(), ...selectedTeeth.toSet()}.toList();
+
+      await collection.doc(existingDocument.id).update({'toothNumber': updatedTeeth});
+    } else {
+      await collection.add(data);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Данные о лечении сохранены')),
+    );
+
+    Navigator.of(context).pop();
   }
 
   @override
@@ -152,34 +175,7 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
                   onTap: () => _selectDate(context),
                 ),
                 ElevatedButton(
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate() && selectedTreatment != null && selectedTeeth.isNotEmpty) {
-                      final collection = FirebaseFirestore.instance.collection('treatments');
-                      Map<String, dynamic> data = {
-                        'patientId': widget.patientId,
-                        'treatmentType': selectedTreatment,
-                        'toothNumber': selectedTeeth,
-                        'date': Timestamp.fromDate(selectedDate),
-                      };
-
-                      if (widget.treatmentData != null && widget.treatmentData!.containsKey('id')) {
-                        print('Updating document with id: ${widget.treatmentData!['id']}');
-                        print('Data to update: $data');
-                        await collection.doc(widget.treatmentData!['id']).update(data);
-                      } else {
-                        print('Adding new document with data: $data');
-                        await collection.add(data);
-                      }
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(widget.treatmentData == null ? 'Данные о лечении добавлены' : 'Данные о лечении обновлены'),
-                        ),
-                      );
-
-                      Navigator.of(context).pop();
-                    }
-                  },
+                  onPressed: _saveOrUpdateTreatment,
                   child: Text(widget.treatmentData == null ? 'Добавить лечение' : 'Обновить лечение'),
                 ),
                 if (widget.treatmentData != null) ...[
