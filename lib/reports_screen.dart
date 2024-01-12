@@ -77,48 +77,54 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildStatisticsWidget(String treatmentType) {
-    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
-        .collection('treatments')
-        .where('treatmentType', isEqualTo: treatmentType)
-        .where('date', isGreaterThanOrEqualTo: firstDate)
-        .where('date', isLessThanOrEqualTo: lastDate);
+  Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+      .collection('treatments')
+      .where('treatmentType', isEqualTo: treatmentType)
+      .where('date', isGreaterThanOrEqualTo: firstDate)
+      .where('date', isLessThanOrEqualTo: lastDate);
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: query.snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
+  return StreamBuilder<QuerySnapshot>(
+    stream: query.snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return Center(child: CircularProgressIndicator());
+      }
 
-        if (snapshot.hasError) {
-          String errorMessage = 'Ошибка: ${snapshot.error.toString()}';
-          return ListTile(
-            title: Text(treatmentType),
-            subtitle: Text(errorMessage),
-            onTap: () async {
-              await Clipboard.setData(ClipboardData(text: errorMessage));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Сообщение об ошибке скопировано в буфер обмена'),
-                ),
-              );
-            },
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return ListTile(
-            title: Text(treatmentType),
-            subtitle: Text('Нет данных за выбранный период.'),
-          );
-        }
-
-        int count = snapshot.data!.docs.length;
+      if (snapshot.hasError) {
+        String errorMessage = 'Ошибка: ${snapshot.error.toString()}';
         return ListTile(
           title: Text(treatmentType),
-          subtitle: Text('Количество за $selectedPeriod: $count'),
+          subtitle: Text(errorMessage),
+          onTap: () async {
+            await Clipboard.setData(ClipboardData(text: errorMessage));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Сообщение об ошибке скопировано в буфер обмена'),
+              ),
+            );
+          },
         );
-      },
-    );
-  }
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return ListTile(
+          title: Text(treatmentType),
+          subtitle: Text('Нет данных за выбранный период.'),
+        );
+      }
+
+      // Агрегация данных для подсчёта суммы зубов
+      int totalTeethCount = snapshot.data!.docs.fold(0, (sum, doc) {
+        var toothNumbers = List.from(doc['toothNumber'] ?? []);
+        return sum + toothNumbers.length;
+      });
+
+      return ListTile(
+        title: Text(treatmentType),
+        subtitle: Text('Количество зубов за $selectedPeriod: $totalTeethCount'),
+      );
+    },
+  );
+}
+
 }
