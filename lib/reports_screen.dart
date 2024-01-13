@@ -12,11 +12,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
   String selectedPeriod = 'month'; // 'month' или 'year'
   late DateTime firstDate;
   late DateTime lastDate;
+  List<String> treatmentTypes = []; // Список для хранения видов лечения
 
   @override
   void initState() {
     super.initState();
     _setDateRange();
+    _loadTreatmentTypes(); // Загрузка видов лечения
   }
 
   void _setDateRange() {
@@ -28,6 +30,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
       firstDate = DateTime(now.year, 1, 1);
       lastDate = DateTime(now.year, 12, 31, 23, 59, 59);
     }
+  }
+
+  Future<void> _loadTreatmentTypes() async {
+    FirebaseFirestore.instance
+      .collection('treatments')
+      .get()
+      .then((querySnapshot) {
+        var types = querySnapshot.docs.map((doc) => doc['treatmentType'].toString()).toSet().toList();
+        setState(() {
+          treatmentTypes = types;
+        });
+      });
   }
 
   @override
@@ -46,14 +60,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ],
           ),
           Expanded(
-            child: ListView(
-              children: [
-                _buildStatisticsWidget('Имплантация'),
-                _buildStatisticsWidget('Удаление'),
-                _buildStatisticsWidget('Кариес'),
-                _buildStatisticsWidget('Сканирование'),
-                _buildStatisticsWidget('Эндо'),
-              ],
+            child: ListView.builder(
+              itemCount: treatmentTypes.length,
+              itemBuilder: (context, index) {
+                return _buildStatisticsWidget(treatmentTypes[index]);
+              },
             ),
           ),
         ],
@@ -77,54 +88,52 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildStatisticsWidget(String treatmentType) {
-  Query<Map<String, dynamic>> query = FirebaseFirestore.instance
-      .collection('treatments')
-      .where('treatmentType', isEqualTo: treatmentType)
-      .where('date', isGreaterThanOrEqualTo: firstDate)
-      .where('date', isLessThanOrEqualTo: lastDate);
+    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+        .collection('treatments')
+        .where('treatmentType', isEqualTo: treatmentType)
+        .where('date', isGreaterThanOrEqualTo: firstDate)
+        .where('date', isLessThanOrEqualTo: lastDate);
 
-  return StreamBuilder<QuerySnapshot>(
-    stream: query.snapshots(),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return Center(child: CircularProgressIndicator());
-      }
+    return StreamBuilder<QuerySnapshot>(
+      stream: query.snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
 
-      if (snapshot.hasError) {
-        String errorMessage = 'Ошибка: ${snapshot.error.toString()}';
+        if (snapshot.hasError) {
+          String errorMessage = 'Ошибка: ${snapshot.error.toString()}';
+          return ListTile(
+            title: Text(treatmentType),
+            subtitle: Text(errorMessage),
+            onTap: () async {
+              await Clipboard.setData(ClipboardData(text: errorMessage));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Сообщение об ошибке скопировано в буфер обмена'),
+                ),
+              );
+            },
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return ListTile(
+            title: Text(treatmentType),
+            subtitle: Text('Нет данных за выбранный период.'),
+          );
+        }
+
+        int totalTeethCount = snapshot.data!.docs.fold(0, (sum, doc) {
+          var toothNumbers = List.from(doc['toothNumber'] ?? []);
+          return sum + toothNumbers.length;
+        });
+
         return ListTile(
           title: Text(treatmentType),
-          subtitle: Text(errorMessage),
-          onTap: () async {
-            await Clipboard.setData(ClipboardData(text: errorMessage));
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Сообщение об ошибке скопировано в буфер обмена'),
-              ),
-            );
-          },
+          subtitle: Text('Количество зубов за $selectedPeriod: $totalTeethCount'),
         );
-      }
-
-      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-        return ListTile(
-          title: Text(treatmentType),
-          subtitle: Text('Нет данных за выбранный период.'),
-        );
-      }
-
-      // Агрегация данных для подсчёта суммы зубов
-      int totalTeethCount = snapshot.data!.docs.fold(0, (sum, doc) {
-        var toothNumbers = List.from(doc['toothNumber'] ?? []);
-        return sum + toothNumbers.length;
-      });
-
-      return ListTile(
-        title: Text(treatmentType),
-        subtitle: Text('Количество зубов за $selectedPeriod: $totalTeethCount'),
-      );
-    },
-  );
-}
-
+      },
+    );
+  }
 }

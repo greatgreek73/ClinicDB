@@ -19,7 +19,7 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
   DateTime selectedDate = DateTime.now();
 
   final List<String> treatments = [
-    'Кариес', 'Имплантация', 'Удаление', 'Сканирование', 'Эндо', 'Формирователь', 'PMMA', 'Коронка', 'Абатмент', 'Сдача PMMA', 'Сдача коронка', 'Сдача абатмент'
+    'Кариес', 'Имплантация', 'Удаление', 'Сканирование', 'Эндо', 'Формирователь', 'PMMA', 'Коронка', 'Абатмент', 'Сдача PMMA', 'Сдача коронка', 'Сдача абатмент', 'Удаление импланта'
   ];
   final List<String> teethNumbers = [
     '11', '12', '13', '14', '15', '16', '17', '18',
