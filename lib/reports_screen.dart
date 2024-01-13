@@ -9,27 +9,13 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
-  String selectedPeriod = 'month'; // 'month' или 'year'
-  late DateTime firstDate;
-  late DateTime lastDate;
+  DateTime selectedDate = DateTime.now(); // Текущая выбранная дата
   List<String> treatmentTypes = []; // Список для хранения видов лечения
 
   @override
   void initState() {
     super.initState();
-    _setDateRange();
     _loadTreatmentTypes(); // Загрузка видов лечения
-  }
-
-  void _setDateRange() {
-    DateTime now = DateTime.now();
-    if (selectedPeriod == 'month') {
-      firstDate = DateTime(now.year, now.month, 1);
-      lastDate = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-    } else {
-      firstDate = DateTime(now.year, 1, 1);
-      lastDate = DateTime(now.year, 12, 31, 23, 59, 59);
-    }
   }
 
   Future<void> _loadTreatmentTypes() async {
@@ -44,6 +30,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
       });
   }
 
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate, 
+      firstDate: DateTime(2000), 
+      lastDate: DateTime(2025),
+      // Отображение только месяца и года
+      initialDatePickerMode: DatePickerMode.year,
+    );
+    if (picked != null && picked != selectedDate)
+      setState(() {
+        selectedDate = picked;
+      });
+  }
+
+  DateTime get firstDate => DateTime(selectedDate.year, selectedDate.month, 1);
+  DateTime get lastDate => DateTime(selectedDate.year, selectedDate.month + 1, 0, 23, 59, 59);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,8 +59,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _periodButton('Месяц', 'month'),
-              _periodButton('Год', 'year'),
+              ElevatedButton(
+                onPressed: () => _selectDate(context),
+                child: Text("${DateFormat.yMMMM().format(selectedDate)}"),
+              ),
             ],
           ),
           Expanded(
@@ -68,21 +74,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _periodButton(String title, String period) {
-    return ElevatedButton(
-      onPressed: () {
-        setState(() {
-          selectedPeriod = period;
-          _setDateRange();
-        });
-      },
-      child: Text(title),
-      style: ElevatedButton.styleFrom(
-        primary: selectedPeriod == period ? Colors.blue : Colors.grey,
       ),
     );
   }
@@ -131,7 +122,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
         return ListTile(
           title: Text(treatmentType),
-          subtitle: Text('Количество зубов за $selectedPeriod: $totalTeethCount'),
+          subtitle: Text('Количество зубов за ${DateFormat.yMMMM().format(selectedDate)}: $totalTeethCount'),
         );
       },
     );
