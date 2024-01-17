@@ -6,6 +6,8 @@ import 'search_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'reports_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,58 +41,41 @@ class ClinicDBApp extends StatelessWidget {
 class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Задаем фиксированные размеры для кнопок
     double buttonWidth = 350;
     double buttonHeight = 60;
     double buttonFontSize = 18;
 
     return Scaffold(
+      appBar: AppBar(title: Text('Клиника - Панель управления')),
       body: Container(
         width: double.infinity,
         height: double.infinity,
         padding: EdgeInsets.symmetric(horizontal: 20),
         color: Colors.white,
-        child: Center(
-          child: Container(
-            width: 870,
-            height: 300,
-            decoration: ShapeDecoration(
-              color: Color(0xFFF1F1F1),
-              shape: RoundedRectangleBorder(
-                side: BorderSide(width: 1, color: Color(0xFF514646)),
-                borderRadius: BorderRadius.circular(20),
-              
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          children: [
+            ImplantationSummaryWidget(),
+            Expanded(
+              child: Center(
+                child: Wrap(
+                  spacing: 20,
+                  runSpacing: 20,
+                  alignment: WrapAlignment.center,
                   children: <Widget>[
                     _buildButton(context, 'Добавить Пациента', () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => AddPatientScreen()));
                     }, buttonWidth, buttonHeight, buttonFontSize),
-                    SizedBox(width: 40), // Отступ между кнопками
                     _buildButton(context, 'Поиск', () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => SearchScreen()));
                     }, buttonWidth, buttonHeight, buttonFontSize),
-                  ],
-                ),
-                SizedBox(height: 20), // Отступ между рядами
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
                     _buildButton(context, 'Отчеты', () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsScreen()));
                     }, buttonWidth, buttonHeight, buttonFontSize),
-                    SizedBox(width: 40), // Отступ между кнопками
-                    _buildButton(context, 'Расписание', () {}, buttonWidth, buttonHeight, buttonFontSize),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -108,6 +93,92 @@ class LoginPage extends StatelessWidget {
       ),
       onPressed: onPressed,
       child: Text(title, style: TextStyle(fontSize: fontSize)),
+    );
+  }
+}
+
+class ImplantationSummaryWidget extends StatefulWidget {
+  @override
+  _ImplantationSummaryWidgetState createState() => _ImplantationSummaryWidgetState();
+}
+
+class _ImplantationSummaryWidgetState extends State<ImplantationSummaryWidget> {
+  DateTime get firstDateOfMonth => DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime get lastDateOfMonth => DateTime(DateTime.now().year, DateTime.now().month + 1, 0, 23, 59, 59);
+  DateTime get firstDateOfYear => DateTime(DateTime.now().year, 1, 1);
+  DateTime get lastDateOfYear => DateTime(DateTime.now().year, 12, 31, 23, 59, 59);
+
+  int totalTeethCountMonth = 0;
+  int totalTeethCountYear = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    calculateStatistics();
+  }
+
+  void calculateStatistics() {
+    FirebaseFirestore.instance
+        .collection('treatments')
+        .where('treatmentType', isEqualTo: 'Имплантация')
+        .where('date', isGreaterThanOrEqualTo: firstDateOfMonth)
+        .where('date', isLessThanOrEqualTo: lastDateOfMonth)
+        .get()
+        .then((snapshot) {
+          setState(() {
+            totalTeethCountMonth = snapshot.docs.fold(0, (sum, doc) {
+              List toothNumbers = doc['toothNumber'] ?? [];
+              return sum + toothNumbers.length;
+            });
+          });
+        });
+
+    FirebaseFirestore.instance
+        .collection('treatments')
+        .where('treatmentType', isEqualTo: 'Имплантация')
+        .where('date', isGreaterThanOrEqualTo: firstDateOfYear)
+        .where('date', isLessThanOrEqualTo: lastDateOfYear)
+        .get()
+        .then((snapshot) {
+          setState(() {
+            totalTeethCountYear = snapshot.docs.fold(0, (sum, doc) {
+              List toothNumbers = doc['toothNumber'] ?? [];
+              return sum + toothNumbers.length;
+            });
+          });
+        });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(10),
+      margin: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.5),
+            spreadRadius: 5,
+            blurRadius: 7,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Количество зубов за текущий месяц: $totalTeethCountMonth',
+            style: TextStyle(fontSize: 16),
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Количество зубов за текущий год: $totalTeethCountYear',
+            style: TextStyle(fontSize: 16),
+          ),
+        ],
+      ),
     );
   }
 }
