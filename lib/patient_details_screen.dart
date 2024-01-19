@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 class PatientDetailsScreen extends StatelessWidget {
   final String patientId;
+  final TextEditingController _plannedTreatmentController = TextEditingController();
 
   PatientDetailsScreen({required this.patientId});
 
@@ -88,6 +89,7 @@ class PatientDetailsScreen extends StatelessWidget {
                         ),
                   ),
                   _buildTreatmentsSection(patientId),
+                  _buildPlannedTreatmentSection(context),
                 ],
               );
             } else if (snapshot.hasError) {
@@ -144,36 +146,60 @@ class PatientDetailsScreen extends StatelessWidget {
     );
   }
 
-  Map<DateTime, List<TreatmentInfo>> _groupTreatmentsByDate(List<DocumentSnapshot> docs) {
-    Map<DateTime, List<TreatmentInfo>> groupedTreatments = {};
+  Widget _buildPlannedTreatmentSection(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(10),
+      margin: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.5),
+            spreadRadius: 5,
+            blurRadius: 7,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text('Планируемое лечение:', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
+          TextField(
+            controller: _plannedTreatmentController,
+            decoration: InputDecoration(border: OutlineInputBorder()),
+            readOnly: true,
+            maxLines: null, // Allows TextField to expand
+          ),
+          SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton(
+                onPressed: () => _navigateAndDisplaySelection(context),
+                child: Text('Добавить'),
+              ),
+              ElevatedButton(
+                onPressed: () => _plannedTreatmentController.clear(),
+                child: Text('Очистить'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-    for (var doc in docs) {
-      var data = doc.data() as Map<String, dynamic>;
-      var timestamp = data['date'] as Timestamp;
-      var dateWithoutTime = DateTime(timestamp.toDate().year, timestamp.toDate().month, timestamp.toDate().day);
-      var treatmentType = data['treatmentType'];
-      var toothNumbers = data['toothNumber'] != null ? List<int>.from(data['toothNumber']) : <int>[];
-      var documentId = doc.id; // Получаем id документа
+  void _navigateAndDisplaySelection(BuildContext context) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => TreatmentSelectionScreen()),
+    );
 
-      if (!groupedTreatments.containsKey(dateWithoutTime)) {
-        groupedTreatments[dateWithoutTime] = [];
-      }
-
-      bool found = false;
-      for (var treatmentInfo in groupedTreatments[dateWithoutTime]!) {
-        if (treatmentInfo.treatmentType == treatmentType) {
-          found = true;
-          treatmentInfo.toothNumbers.addAll(toothNumbers.where((num) => !treatmentInfo.toothNumbers.contains(num)));
-          break;
-        }
-      }
-
-      if (!found) {
-        groupedTreatments[dateWithoutTime]!.add(TreatmentInfo(treatmentType, toothNumbers, documentId));
-      }
+    if (result != null) {
+      _plannedTreatmentController.text += (result + '\n');
     }
-
-    return groupedTreatments;
   }
 
   void _confirmDeletion(BuildContext context, String patientId) {
@@ -201,12 +227,44 @@ class PatientDetailsScreen extends StatelessWidget {
       },
     );
   }
+
+  Map<DateTime, List<TreatmentInfo>> _groupTreatmentsByDate(List<DocumentSnapshot> docs) {
+    Map<DateTime, List<TreatmentInfo>> groupedTreatments = {};
+
+    for (var doc in docs) {
+      var data = doc.data() as Map<String, dynamic>;
+      var timestamp = data['date'] as Timestamp;
+      var dateWithoutTime = DateTime(timestamp.toDate().year, timestamp.toDate().month, timestamp.toDate().day);
+      var treatmentType = data['treatmentType'];
+      var toothNumbers = data['toothNumber'] != null ? List<int>.from(data['toothNumber']) : <int>[];
+      var documentId = doc.id;
+
+      if (!groupedTreatments.containsKey(dateWithoutTime)) {
+        groupedTreatments[dateWithoutTime] = [];
+      }
+
+      bool found = false;
+      for (var treatmentInfo in groupedTreatments[dateWithoutTime]!) {
+        if (treatmentInfo.treatmentType == treatmentType) {
+          found = true;
+          treatmentInfo.toothNumbers.addAll(toothNumbers.where((num) => !treatmentInfo.toothNumbers.contains(num)));
+          break;
+        }
+      }
+
+      if (!found) {
+        groupedTreatments[dateWithoutTime]!.add(TreatmentInfo(treatmentType, toothNumbers, documentId));
+      }
+    }
+
+    return groupedTreatments;
+  }
 }
 
 class TreatmentInfo {
   String treatmentType;
   List<int> toothNumbers;
-  String? id; // Делаем id nullable
+  String? id;
 
   TreatmentInfo(this.treatmentType, this.toothNumbers, this.id);
 
@@ -214,7 +272,32 @@ class TreatmentInfo {
     return {
       'treatmentType': treatmentType,
       'toothNumbers': toothNumbers,
-      'id': id // Теперь id может быть null
+      'id': id
     };
+  }
+}
+
+class TreatmentSelectionScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    List<String> treatments = [
+      '1 сегмент', '2 сегмент', '3 сегмент', '4 сегмент',
+      'Имплантация', 'Обточка', 'Лечение', 'Сдача'
+    ];
+
+    return Scaffold(
+      appBar: AppBar(title: Text('Выбор лечения')),
+      body: ListView.builder(
+        itemCount: treatments.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            title: Text(treatments[index]),
+            onTap: () {
+              Navigator.pop(context, treatments[index]);
+            },
+          );
+        },
+      ),
+    );
   }
 }
