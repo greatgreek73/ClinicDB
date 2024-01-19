@@ -42,7 +42,7 @@ dependencies:
   flutter_screenutil: ^5.9.0
   image_picker: ^1.0.5
   flutter_masked_text2: ^0.9.1
-  
+  shared_preferences: ^2.2.2
 
 
 dev_dependencies:

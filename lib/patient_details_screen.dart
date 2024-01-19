@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_patient_screen.dart';
 import 'add_treatment_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PatientDetailsScreen extends StatelessWidget {
   final String patientId;
@@ -12,6 +13,8 @@ class PatientDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    _loadPlannedTreatment();
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Детали Пациента'),
@@ -170,7 +173,7 @@ class PatientDetailsScreen extends StatelessWidget {
             controller: _plannedTreatmentController,
             decoration: InputDecoration(border: OutlineInputBorder()),
             readOnly: true,
-            maxLines: null, // Allows TextField to expand
+            maxLines: null,
           ),
           SizedBox(height: 10),
           Row(
@@ -181,7 +184,10 @@ class PatientDetailsScreen extends StatelessWidget {
                 child: Text('Добавить'),
               ),
               ElevatedButton(
-                onPressed: () => _plannedTreatmentController.clear(),
+                onPressed: () {
+                  _plannedTreatmentController.clear();
+                  _savePlannedTreatment('');
+                },
                 child: Text('Очистить'),
               ),
             ],
@@ -199,7 +205,19 @@ class PatientDetailsScreen extends StatelessWidget {
 
     if (result != null) {
       _plannedTreatmentController.text += (result + '\n');
+      await _savePlannedTreatment(_plannedTreatmentController.text);
     }
+  }
+
+  Future<void> _savePlannedTreatment(String treatment) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('planned_treatment_$patientId', treatment);
+  }
+
+  Future<void> _loadPlannedTreatment() async {
+    final prefs = await SharedPreferences.getInstance();
+    String treatment = prefs.getString('planned_treatment_$patientId') ?? '';
+    _plannedTreatmentController.text = treatment;
   }
 
   void _confirmDeletion(BuildContext context, String patientId) {
@@ -301,3 +319,4 @@ class TreatmentSelectionScreen extends StatelessWidget {
     );
   }
 }
+
