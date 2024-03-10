@@ -1,18 +1,18 @@
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
-import 'add_patient_screen.dart';
-import 'search_screen.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
-import 'reports_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import 'add_patient_screen.dart';
+import 'firebase_options.dart';
+import 'reports_screen.dart';
+import 'search_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!kIsWeb) {
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       systemNavigationBarColor: Colors.black,
       systemNavigationBarIconBrightness: Brightness.light,
     ));
@@ -20,10 +20,12 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(ClinicDBApp());
+  runApp(const ClinicDBApp());
 }
 
 class ClinicDBApp extends StatelessWidget {
+  const ClinicDBApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -31,14 +33,16 @@ class ClinicDBApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: Colors.white,
-        appBarTheme: AppBarTheme(color: Colors.white),
+        appBarTheme: const AppBarTheme(color: Colors.white),
       ),
-      home: LoginPage(),
+      home: const LoginPage(),
     );
   }
 }
 
 class LoginPage extends StatelessWidget {
+  const LoginPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     double buttonWidth = 350;
@@ -46,16 +50,16 @@ class LoginPage extends StatelessWidget {
     double buttonFontSize = 18;
 
     return Scaffold(
-      appBar: AppBar(title: Text('Клиника - Панель управления')),
+      appBar: AppBar(title: const Text('Клиника - Панель управления')),
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        padding: EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         color: Colors.white,
         child: Column(
           children: [
-            ImplantationSummaryWidget(),
-            CrownAndAbutmentSummaryWidget(),
+            const ImplantationSummaryWidget(),
+            const CrownAndAbutmentSummaryWidget(),
             Expanded(
               child: Center(
                 child: Wrap(
@@ -64,13 +68,22 @@ class LoginPage extends StatelessWidget {
                   alignment: WrapAlignment.center,
                   children: <Widget>[
                     _buildButton(context, 'Добавить Пациента', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => AddPatientScreen()));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => AddPatientScreen()));
                     }, buttonWidth, buttonHeight, buttonFontSize),
                     _buildButton(context, 'Поиск', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => SearchScreen()));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => SearchScreen()));
                     }, buttonWidth, buttonHeight, buttonFontSize),
                     _buildButton(context, 'Отчеты', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsScreen()));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => ReportsScreen()));
                     }, buttonWidth, buttonHeight, buttonFontSize),
                   ],
                 ),
@@ -82,12 +95,13 @@ class LoginPage extends StatelessWidget {
     );
   }
 
-  Widget _buildButton(BuildContext context, String title, VoidCallback onPressed, double width, double height, double fontSize) {
+  Widget _buildButton(BuildContext context, String title,
+      VoidCallback onPressed, double width, double height, double fontSize) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        primary: Color(0xFF0F5BF1),
-        onPrimary: Colors.white,
-        shadowColor: Color(0x40000000),
+        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFF0F5BF1),
+        shadowColor: const Color(0x40000000),
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         fixedSize: Size(width, height),
@@ -99,15 +113,21 @@ class LoginPage extends StatelessWidget {
 }
 
 class ImplantationSummaryWidget extends StatefulWidget {
+  const ImplantationSummaryWidget({super.key});
+
   @override
-  _ImplantationSummaryWidgetState createState() => _ImplantationSummaryWidgetState();
+  _ImplantationSummaryWidgetState createState() =>
+      _ImplantationSummaryWidgetState();
 }
 
 class _ImplantationSummaryWidgetState extends State<ImplantationSummaryWidget> {
-  DateTime get firstDateOfMonth => DateTime(DateTime.now().year, DateTime.now().month, 1);
-  DateTime get lastDateOfMonth => DateTime(DateTime.now().year, DateTime.now().month + 1, 0, 23, 59, 59);
+  DateTime get firstDateOfMonth =>
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime get lastDateOfMonth =>
+      DateTime(DateTime.now().year, DateTime.now().month + 1, 0, 23, 59, 59);
   DateTime get firstDateOfYear => DateTime(DateTime.now().year, 1, 1);
-  DateTime get lastDateOfYear => DateTime(DateTime.now().year, 12, 31, 23, 59, 59);
+  DateTime get lastDateOfYear =>
+      DateTime(DateTime.now().year, 12, 31, 23, 59, 59);
 
   int totalTeethCountMonth = 0;
   int totalTeethCountYear = 0;
@@ -126,13 +146,13 @@ class _ImplantationSummaryWidgetState extends State<ImplantationSummaryWidget> {
         .where('date', isLessThanOrEqualTo: lastDateOfMonth)
         .get()
         .then((snapshot) {
-          setState(() {
-            totalTeethCountMonth = snapshot.docs.fold<int>(0, (int sum, doc) {
-              var toothNumbers = List.from(doc['toothNumber'] ?? []);
-              return sum + toothNumbers.length;
-            });
-          });
+      setState(() {
+        totalTeethCountMonth = snapshot.docs.fold<int>(0, (int sum, doc) {
+          var toothNumbers = List.from(doc['toothNumber'] ?? []);
+          return sum + toothNumbers.length;
         });
+      });
+    });
 
     FirebaseFirestore.instance
         .collection('treatments')
@@ -141,20 +161,20 @@ class _ImplantationSummaryWidgetState extends State<ImplantationSummaryWidget> {
         .where('date', isLessThanOrEqualTo: lastDateOfYear)
         .get()
         .then((snapshot) {
-          setState(() {
-            totalTeethCountYear = snapshot.docs.fold<int>(0, (int sum, doc) {
-              var toothNumbers = List.from(doc['toothNumber'] ?? []);
-              return sum + toothNumbers.length;
-            });
-          });
+      setState(() {
+        totalTeethCountYear = snapshot.docs.fold<int>(0, (int sum, doc) {
+          var toothNumbers = List.from(doc['toothNumber'] ?? []);
+          return sum + toothNumbers.length;
         });
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(10),
-      margin: EdgeInsets.all(10),
+      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -163,7 +183,7 @@ class _ImplantationSummaryWidgetState extends State<ImplantationSummaryWidget> {
             color: Colors.grey.withOpacity(0.5),
             spreadRadius: 5,
             blurRadius: 7,
-            offset: Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -171,12 +191,12 @@ class _ImplantationSummaryWidgetState extends State<ImplantationSummaryWidget> {
         children: [
           Text(
             'Количество зубов за текущий месяц: $totalTeethCountMonth',
-            style: TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: 16),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           Text(
             'Количество зубов за текущий год: $totalTeethCountYear',
-            style: TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: 16),
           ),
         ],
       ),
@@ -185,15 +205,22 @@ class _ImplantationSummaryWidgetState extends State<ImplantationSummaryWidget> {
 }
 
 class CrownAndAbutmentSummaryWidget extends StatefulWidget {
+  const CrownAndAbutmentSummaryWidget({super.key});
+
   @override
-  _CrownAndAbutmentSummaryWidgetState createState() => _CrownAndAbutmentSummaryWidgetState();
+  _CrownAndAbutmentSummaryWidgetState createState() =>
+      _CrownAndAbutmentSummaryWidgetState();
 }
 
-class _CrownAndAbutmentSummaryWidgetState extends State<CrownAndAbutmentSummaryWidget> {
-  DateTime get firstDateOfMonth => DateTime(DateTime.now().year, DateTime.now().month, 1);
-  DateTime get lastDateOfMonth => DateTime(DateTime.now().year, DateTime.now().month + 1, 0, 23, 59, 59);
+class _CrownAndAbutmentSummaryWidgetState
+    extends State<CrownAndAbutmentSummaryWidget> {
+  DateTime get firstDateOfMonth =>
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime get lastDateOfMonth =>
+      DateTime(DateTime.now().year, DateTime.now().month + 1, 0, 23, 59, 59);
   DateTime get firstDateOfYear => DateTime(DateTime.now().year, 1, 1);
-  DateTime get lastDateOfYear => DateTime(DateTime.now().year, 12, 31, 23, 59, 59);
+  DateTime get lastDateOfYear =>
+      DateTime(DateTime.now().year, 12, 31, 23, 59, 59);
 
   int totalTeethCountMonth = 0;
   int totalTeethCountYear = 0;
@@ -239,8 +266,8 @@ class _CrownAndAbutmentSummaryWidgetState extends State<CrownAndAbutmentSummaryW
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(10),
-      margin: EdgeInsets.all(10),
+      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -249,7 +276,7 @@ class _CrownAndAbutmentSummaryWidgetState extends State<CrownAndAbutmentSummaryW
             color: Colors.grey.withOpacity(0.5),
             spreadRadius: 5,
             blurRadius: 7,
-            offset: Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -257,12 +284,12 @@ class _CrownAndAbutmentSummaryWidgetState extends State<CrownAndAbutmentSummaryW
         children: [
           Text(
             'Количество зубов (Коронка и Абатмент) за текущий месяц: $totalTeethCountMonth',
-            style: TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: 16),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           Text(
             'Количество зубов (Коронка и Абатмент) за текущий год: $totalTeethCountYear',
-            style: TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: 16),
           ),
         ],
       ),

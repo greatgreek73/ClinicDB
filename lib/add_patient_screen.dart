@@ -1,12 +1,16 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'patient_details_screen.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_masked_text2/flutter_masked_text2.dart';
+import 'package:image_picker/image_picker.dart';
+
+import 'patient_details_screen.dart';
 
 class AddPatientScreen extends StatefulWidget {
+  const AddPatientScreen({super.key});
+
   @override
   _AddPatientScreenState createState() => _AddPatientScreenState();
 }
@@ -15,15 +19,21 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _surnameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
-  final MoneyMaskedTextController _priceController = MoneyMaskedTextController(decimalSeparator: '', thousandSeparator: '.', precision: 0, leftSymbol: '');
+  final MoneyMaskedTextController _priceController = MoneyMaskedTextController(
+      decimalSeparator: '',
+      thousandSeparator: '.',
+      precision: 0,
+      leftSymbol: '');
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
-  final MaskedTextController _phoneController = MaskedTextController(mask: '(000) 000-00-00');
+  final MaskedTextController _phoneController =
+      MaskedTextController(mask: '(000) 000-00-00');
   bool _isMale = true;
   File? _image;
 
   Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final pickedFile =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
         _image = File(pickedFile.path);
@@ -33,8 +43,10 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
 
   Future<String?> _uploadImageToStorage(File imageFile) async {
     try {
-      String fileName = 'patients/${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
-      UploadTask uploadTask = FirebaseStorage.instance.ref().child(fileName).putFile(imageFile);
+      String fileName =
+          'patients/${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
+      UploadTask uploadTask =
+          FirebaseStorage.instance.ref().child(fileName).putFile(imageFile);
       TaskSnapshot snapshot = await uploadTask;
       return await snapshot.ref.getDownloadURL();
     } catch (e) {
@@ -60,14 +72,14 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     final String gender = _isMale ? 'Мужской' : 'Женский';
 
     final querySnapshot = await FirebaseFirestore.instance
-      .collection('patients')
-      .where('surname', isEqualTo: surname)
-      .where('name', isEqualTo: name)
-      .get();
+        .collection('patients')
+        .where('surname', isEqualTo: surname)
+        .where('name', isEqualTo: name)
+        .get();
 
     if (querySnapshot.docs.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Пациент с такой фамилией и именем уже существует.'),
         ),
       );
@@ -104,11 +116,12 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   @override
   Widget build(BuildContext context) {
     double fieldWidth = 650;
-    Color labelColor = Color(0xFF151515);
+    Color labelColor = const Color(0xFF151515);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Добавить Пациента', style: TextStyle(color: Colors.white)),
+        title: const Text('Добавить Пациента',
+            style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
       ),
       backgroundColor: Colors.white,
@@ -117,9 +130,9 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
           width: 670,
           height: double.infinity,
           decoration: ShapeDecoration(
-            color: Color(0xFFF1F1F1),
+            color: const Color(0xFFF1F1F1),
             shape: RoundedRectangleBorder(
-              side: BorderSide(width: 1, color: Color(0xFF5A5959)),
+              side: const BorderSide(width: 1, color: Color(0xFF5A5959)),
               borderRadius: BorderRadius.circular(20),
             ),
           ),
@@ -130,17 +143,31 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  _buildFieldWithPadding(_buildTextFormField(_surnameController, 'Фамилия', labelColor), fieldWidth),
-                  _buildFieldWithPadding(_buildTextFormField(_ageController, 'Возраст', labelColor, isNumber: true), fieldWidth),
-                  _buildFieldWithPadding(_buildPriceFormField(_priceController, 'Цена', labelColor), fieldWidth),
-                  _buildFieldWithPadding(_buildTextFormField(_nameController, 'Имя', labelColor), fieldWidth),
-                  _buildFieldWithPadding(_buildTextFormField(_cityController, 'Город', labelColor), fieldWidth),
-                  _buildFieldWithPadding(_buildPhoneFormField(labelColor), fieldWidth),
-                  SizedBox(height: 40),
-                  _buildGenderRow(Color(0xFF0F5BF1)),
-                  SizedBox(height: 40),
+                  _buildFieldWithPadding(
+                      _buildTextFormField(
+                          _surnameController, 'Фамилия', labelColor),
+                      fieldWidth),
+                  _buildFieldWithPadding(
+                      _buildTextFormField(_ageController, 'Возраст', labelColor,
+                          isNumber: true),
+                      fieldWidth),
+                  _buildFieldWithPadding(
+                      _buildPriceFormField(
+                          _priceController, 'Цена', labelColor),
+                      fieldWidth),
+                  _buildFieldWithPadding(
+                      _buildTextFormField(_nameController, 'Имя', labelColor),
+                      fieldWidth),
+                  _buildFieldWithPadding(
+                      _buildTextFormField(_cityController, 'Город', labelColor),
+                      fieldWidth),
+                  _buildFieldWithPadding(
+                      _buildPhoneFormField(labelColor), fieldWidth),
+                  const SizedBox(height: 40),
+                  _buildGenderRow(const Color(0xFF0F5BF1)),
+                  const SizedBox(height: 40),
                   _buildImageSection(),
-                  SizedBox(height: 40),
+                  const SizedBox(height: 40),
                   _buildSaveButton(),
                 ],
               ),
@@ -158,20 +185,22 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     );
   }
 
-  Widget _buildTextFormField(TextEditingController controller, String label, Color labelColor, {bool isNumber = false}) {
+  Widget _buildTextFormField(
+      TextEditingController controller, String label, Color labelColor,
+      {bool isNumber = false}) {
     return TextFormField(
       controller: controller,
-      style: TextStyle(color: Colors.black),
+      style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: labelColor),
-        enabledBorder: UnderlineInputBorder(
+        enabledBorder: const UnderlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
         ),
-        focusedBorder: UnderlineInputBorder(
+        focusedBorder: const UnderlineInputBorder(
           borderSide: BorderSide(color: Colors.white),
         ),
-        border: UnderlineInputBorder(
+        border: const UnderlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
         ),
       ),
@@ -185,7 +214,8 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     );
   }
 
-  Widget _buildPriceFormField(MoneyMaskedTextController controller, String label, Color labelColor) {
+  Widget _buildPriceFormField(
+      MoneyMaskedTextController controller, String label, Color labelColor) {
     return _buildTextFormField(controller, label, labelColor, isNumber: true);
   }
 
@@ -200,24 +230,26 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
         GestureDetector(
           onTap: () => setState(() => _isMale = true),
           child: Container(
-            padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
+            padding:
+                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
             decoration: BoxDecoration(
               color: _isMale ? customColor : Colors.grey,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text('Мужской', style: TextStyle(color: Colors.white)),
+            child: const Text('Мужской', style: TextStyle(color: Colors.white)),
           ),
         ),
-        SizedBox(width: 20),
+        const SizedBox(width: 20),
         GestureDetector(
           onTap: () => setState(() => _isMale = false),
           child: Container(
-            padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
+            padding:
+                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
             decoration: BoxDecoration(
               color: !_isMale ? customColor : Colors.grey,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text('Женский', style: TextStyle(color: Colors.white)),
+            child: const Text('Женский', style: TextStyle(color: Colors.white)),
           ),
         ),
       ],
@@ -235,8 +267,9 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
           ),
         ElevatedButton(
           onPressed: _pickImage,
-          child: Text('Выбрать фотографию', style: TextStyle(color: Colors.white)),
-          style: ElevatedButton.styleFrom(primary: Colors.grey),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+          child: const Text('Выбрать фотографию',
+              style: TextStyle(color: Colors.white)),
         ),
       ],
     );
@@ -249,9 +282,9 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
 
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        primary: Color(0xFF0F5BF1),
-        onPrimary: Colors.white,
-        shadowColor: Color(0x40000000),
+        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFF0F5BF1),
+        shadowColor: const Color(0x40000000),
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         fixedSize: Size(buttonWidth, buttonHeight),
