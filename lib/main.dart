@@ -1,3 +1,4 @@
+import 'package:clinicdb/views/dashboard_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -71,7 +72,7 @@ class LoginPage extends StatelessWidget {
                       Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => AddPatientScreen()));
+                              builder: (context) => const AddPatientScreen()));
                     }, buttonWidth, buttonHeight, buttonFontSize),
                     _buildButton(context, 'Поиск', () {
                       Navigator.push(
@@ -84,6 +85,12 @@ class LoginPage extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                               builder: (context) => ReportsScreen()));
+                    }, buttonWidth, buttonHeight, buttonFontSize),
+                    _buildButton(context, 'Dashboard', () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const DashboardScreen()));
                     }, buttonWidth, buttonHeight, buttonFontSize),
                   ],
                 ),
