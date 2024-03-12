@@ -1,9 +1,12 @@
+import 'package:clinicdb/theme/dark_theme.dart';
+import 'package:clinicdb/theme/light_theme.dart';
 import 'package:clinicdb/views/dashboard_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 
 import 'add_patient_screen.dart';
 import 'firebase_options.dart';
@@ -29,13 +32,12 @@ class ClinicDBApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       title: 'clinicdb',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Colors.white,
-        appBarTheme: const AppBarTheme(color: Colors.white),
-      ),
+      debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.system,
+      theme: LightTheme.theme,
+      darkTheme: DarkTheme.theme,
       home: const LoginPage(),
     );
   }
@@ -123,7 +125,7 @@ class ImplantationSummaryWidget extends StatefulWidget {
   const ImplantationSummaryWidget({super.key});
 
   @override
-  _ImplantationSummaryWidgetState createState() =>
+  State<ImplantationSummaryWidget> createState() =>
       _ImplantationSummaryWidgetState();
 }
 
@@ -215,7 +217,7 @@ class CrownAndAbutmentSummaryWidget extends StatefulWidget {
   const CrownAndAbutmentSummaryWidget({super.key});
 
   @override
-  _CrownAndAbutmentSummaryWidgetState createState() =>
+  State<CrownAndAbutmentSummaryWidget> createState() =>
       _CrownAndAbutmentSummaryWidgetState();
 }
 

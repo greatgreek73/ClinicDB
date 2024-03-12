@@ -26,7 +26,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: scaffoldKey,
-      backgroundColor: Theme.of(context).canvasColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         top: true,
         child: Row(
@@ -43,9 +43,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   constraints: const BoxConstraints(
                     maxWidth: 1170,
                   ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).canvasColor,
-                  ),
+                  // decoration: BoxDecoration(
+                  //   color: Theme.of(context).canvasColor,
+                  // ),
                   child: Padding(
                     padding:
                         const EdgeInsetsDirectional.fromSTEB(16, 24, 16, 24),

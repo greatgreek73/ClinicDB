@@ -1,7 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:clinicdb/configs/constants.dart';
 import 'package:clinicdb/model/side_nav_model.dart';
+import 'package:clinicdb/theme/dark_theme.dart';
+import 'package:clinicdb/theme/light_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class SideNavWidget extends StatefulWidget {
   const SideNavWidget({
@@ -42,7 +45,7 @@ class _SideNavWidgetState extends State<SideNavWidget> {
           width: 270,
           height: double.infinity,
           decoration: BoxDecoration(
-            color: AppColors.kPrimaryColor,
+            color: Theme.of(context).canvasColor,
             boxShadow: const [
               BoxShadow(
                 blurRadius: 3,
@@ -442,7 +445,7 @@ class _SideNavWidgetState extends State<SideNavWidget> {
                       width: 250,
                       height: 50,
                       decoration: BoxDecoration(
-                        color: AppColors.kPrimaryColor,
+                        color: Theme.of(context).canvasColor,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: AppColors.kBorderColor.shade300,
@@ -462,8 +465,11 @@ class _SideNavWidgetState extends State<SideNavWidget> {
                                 hoverColor: Colors.transparent,
                                 highlightColor: Colors.transparent,
                                 onTap: () async {
-                                  //TODO: add dark mode switch
-                                  // setDarkModeSetting(context, ThemeMode.light);
+                                  if (Get.isDarkMode) {
+                                    Get.changeTheme(LightTheme.theme);
+                                    Get.changeThemeMode(ThemeMode.light);
+                                    Get.reloadAll();
+                                  }
                                 },
                                 child: Container(
                                   width: 115,
@@ -471,9 +477,9 @@ class _SideNavWidgetState extends State<SideNavWidget> {
                                   decoration: BoxDecoration(
                                     color: Theme.of(context).brightness ==
                                             Brightness.light
-                                        ? Colors.white
+                                        ? Theme.of(context).cardColor
                                         : Theme.of(context)
-                                            .primaryColorDark, // Use primaryColorDark for dark theme
+                                            .scaffoldBackgroundColor, // Use primaryColorDark for dark theme
                                     borderRadius: BorderRadius.circular(10.0),
                                     border: Border.all(
                                       color: Theme.of(context).brightness ==
@@ -494,7 +500,7 @@ class _SideNavWidgetState extends State<SideNavWidget> {
                                         color: Theme.of(context).brightness ==
                                                 Brightness.light
                                             ? Theme.of(context).primaryColor
-                                            : Theme.of(context).primaryColor,
+                                            : Theme.of(context).indicatorColor,
                                         size: 16,
                                       ),
                                       Padding(
@@ -513,7 +519,7 @@ class _SideNavWidgetState extends State<SideNavWidget> {
                                                     ? Theme.of(context)
                                                         .primaryColor
                                                     : Theme.of(context)
-                                                        .primaryColor,
+                                                        .indicatorColor,
                                               ),
                                         ),
                                       ),
@@ -529,25 +535,28 @@ class _SideNavWidgetState extends State<SideNavWidget> {
                                 hoverColor: Colors.transparent,
                                 highlightColor: Colors.transparent,
                                 onTap: () async {
-                                  //TODO: add dark mode
-                                  // setDarkModeSetting(context, ThemeMode.dark);
+                                  if (!Get.isDarkMode) {
+                                    Get.changeTheme(DarkTheme.theme);
+                                    Get.changeThemeMode(ThemeMode.dark);
+                                    Get.reloadAll();
+                                  }
                                 },
                                 child: Container(
                                   width: 115,
                                   height: 100,
                                   decoration: BoxDecoration(
                                     color: Theme.of(context).brightness ==
-                                            Brightness.light
-                                        ? AppColors.kPrimaryColor
-                                        : Theme.of(context).primaryColor,
-                                    borderRadius: BorderRadius.circular(10),
+                                            Brightness.dark
+                                        ? Theme.of(context).hoverColor
+                                        : Theme.of(context)
+                                            .canvasColor, // Use primaryColorDark for dark theme
+                                    borderRadius: BorderRadius.circular(10.0),
                                     border: Border.all(
                                       color: Theme.of(context).brightness ==
                                               Brightness.light
-                                          ? AppColors.kPrimaryColor
+                                          ? Colors.grey.shade300
                                           : Theme.of(context)
-                                              .canvasColor, // Use canvasColor for light border in dark theme
-
+                                              .scaffoldBackgroundColor,
                                       width: 1.0,
                                     ),
                                   ),
@@ -559,7 +568,7 @@ class _SideNavWidgetState extends State<SideNavWidget> {
                                         Icons.nightlight_round,
                                         color: Theme.of(context).brightness ==
                                                 Brightness.dark
-                                            ? Theme.of(context).primaryColor
+                                            ? Theme.of(context).indicatorColor
                                             : Theme.of(context).primaryColor,
                                         size: 16,
                                       ),
@@ -577,7 +586,7 @@ class _SideNavWidgetState extends State<SideNavWidget> {
                                                             .brightness ==
                                                         Brightness.dark
                                                     ? Theme.of(context)
-                                                        .primaryColor
+                                                        .indicatorColor
                                                     : Theme.of(context)
                                                         .primaryColor,
                                               ),
