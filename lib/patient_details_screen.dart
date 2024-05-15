@@ -53,29 +53,22 @@ class PatientDetailsScreen extends StatelessWidget {
               var patientData = snapshot.data!.data() as Map<String, dynamic>;
               return ListView(
                 children: <Widget>[
-                  ListTile(
-                    title: Text('Фамилия'),
-                    subtitle: Text(patientData['surname'] ?? 'Нет данных'),
-                  ),
-                  ListTile(
-                    title: Text('Имя'),
-                    subtitle: Text(patientData['name'] ?? 'Нет данных'),
-                  ),
-                  ListTile(
-                    title: Text('Возраст'),
-                    subtitle: Text('${patientData['age']}'),
-                  ),
-                  ListTile(
-                    title: Text('Город'),
-                    subtitle: Text(patientData['city'] ?? 'Нет данных'),
-                  ),
-                  ListTile(
-                    title: Text('Телефон'),
-                    subtitle: Text(patientData['phone'] ?? 'Нет данных'),
-                  ),
-                  ListTile(
-                    title: Text('Цена'),
-                    subtitle: Text('${patientData['price']}'),
+                  Card(
+                    margin: EdgeInsets.all(8),
+                    child: Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text('Фамилия: ${patientData['surname'] ?? 'Нет данных'}', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text('Имя: ${patientData['name'] ?? 'Нет даных'}'),
+                          Text('Возраст: ${patientData['age']}'),
+                          Text('Город: ${patientData['city'] ?? 'Нет данных'}'),
+                          Text('Телефон: ${patientData['phone'] ?? 'Нет данных'}'),
+                          Text('Цена: ${patientData['price'] ?? 'Нет данных'}', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
                   ),
                   ListTile(
                     title: Text('Фото'),
@@ -91,7 +84,27 @@ class PatientDetailsScreen extends StatelessWidget {
                           child: Center(child: Text('Нет фото')),
                         ),
                   ),
-                  _buildTreatmentsSection(patientId),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center, // Выравнивание по центру
+                    crossAxisAlignment: CrossAxisAlignment.start, // Выравнивание по верхнему краю
+                    children: [
+                      Flexible(
+                        flex: 1,
+                        child: Container(
+                          width: MediaQuery.of(context).size.width * 0.2667, // Ширина 26.67% от экрана
+                          child: _buildTreatmentsSection(patientId), // Сортировка по датам
+                        ),
+                      ),
+                      SizedBox(width: 16), // Добавление отступа между колонками
+                      Flexible(
+                        flex: 1,
+                        child: Container(
+                          width: MediaQuery.of(context).size.width * 0.2667, // Ширина 26.67% от экрана
+                          child: _buildTreatmentsByTypeSection(patientId), // Сортировка по видам лечения
+                        ),
+                      ),
+                    ],
+                  ),
                   _buildPlannedTreatmentSection(context),
                 ],
               );
@@ -129,19 +142,122 @@ class PatientDetailsScreen extends StatelessWidget {
           itemBuilder: (context, index) {
             DateTime date = treatments.keys.elementAt(index);
             var treatmentInfos = treatments[date]!;
-            return ExpansionTile(
-              title: Text(DateFormat('yyyy-MM-dd').format(date)),
-              children: treatmentInfos.map((treatmentInfo) {
-                return ListTile(
-                  title: Text(treatmentInfo.treatmentType),
-                  subtitle: Text('Зубы: ${treatmentInfo.toothNumbers.join(", ")}'),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => AddTreatmentScreen(patientId: patientId, treatmentData: treatmentInfo.toMap()),
+            return Center(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.5, // Ширина 50% от экрана
+                child: Card(
+                  margin: EdgeInsets.all(8),
+                  child: ExpansionTile(
+                    title: Text(
+                      DateFormat('yyyy-MM-dd').format(date),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
+                    initiallyExpanded: true, // Сразу развернутый вид
+                    children: treatmentInfos.map((treatmentInfo) {
+                      return ListTile(
+                        leading: Icon(Icons.healing), // Иконка, отражающая тип лечения
+                        title: Text(
+                          treatmentInfo.treatmentType,
+                          style: TextStyle(fontSize: 16, color: Colors.blue),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Зубы: ${treatmentInfo.toothNumbers.join(", ")}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.red, // Изменение цвета
+                                fontWeight: FontWeight.bold, // Жирный шрифт
+                              ),
+                            ),
+                            Text('Статус: ${treatmentInfo.status}'),
+                          ],
+                        ),
+                        trailing: Icon(Icons.arrow_forward),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => AddTreatmentScreen(patientId: patientId, treatmentData: treatmentInfo.toMap()),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
-                );
-              }).toList(),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTreatmentsByTypeSection(String patientId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('treatments')
+          .where('patientId', isEqualTo: patientId)
+          .snapshots(),
+      builder: (context, treatmentSnapshot) {
+        if (treatmentSnapshot.hasError) {
+          return Text('Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}');
+        }
+        if (treatmentSnapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        var treatments = _groupTreatmentsByType(treatmentSnapshot.data!.docs);
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: treatments.keys.length,
+          itemBuilder: (context, index) {
+            String treatmentType = treatments.keys.elementAt(index);
+            var treatmentInfos = treatments[treatmentType]!;
+            return Center(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.2667, // Ширина 26.67% от экрана
+                child: Card(
+                  margin: EdgeInsets.all(8),
+                  child: ExpansionTile(
+                    title: Text(
+                      treatmentType,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    initiallyExpanded: true, // Сразу развернутый вид
+                    children: treatmentInfos.map((treatmentInfo) {
+                      return ListTile(
+                        title: Text(
+                          treatmentInfo.treatmentType,
+                          style: TextStyle(fontSize: 16, color: Colors.blue),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (treatmentInfo.toothNumbers != null && treatmentInfo.toothNumbers.isNotEmpty)
+                              Text(
+                                'Зубы: ${treatmentInfo.toothNumbers.join(", ")}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            Text('Статус: ${treatmentInfo.status}'),
+                          ],
+                        ),
+                        trailing: Icon(Icons.arrow_forward),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => AddTreatmentScreen(patientId: patientId, treatmentData: treatmentInfo.toMap()),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
             );
           },
         );
@@ -225,7 +341,7 @@ class PatientDetailsScreen extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Удалить пациента'),
+          title: Text('Удалть пациента'),
           content: Text('Вы уверены, что хотите удалить этого пациента?'),
           actions: <Widget>[
             TextButton(
@@ -256,6 +372,7 @@ class PatientDetailsScreen extends StatelessWidget {
       var treatmentType = data['treatmentType'];
       var toothNumbers = data['toothNumber'] != null ? List<int>.from(data['toothNumber']) : <int>[];
       var documentId = doc.id;
+      var status = data['status'] ?? 'Неизвестно';
 
       if (!groupedTreatments.containsKey(dateWithoutTime)) {
         groupedTreatments[dateWithoutTime] = [];
@@ -271,7 +388,36 @@ class PatientDetailsScreen extends StatelessWidget {
       }
 
       if (!found) {
-        groupedTreatments[dateWithoutTime]!.add(TreatmentInfo(treatmentType, toothNumbers, documentId));
+        groupedTreatments[dateWithoutTime]!.add(TreatmentInfo(treatmentType, toothNumbers, documentId, status));
+      }
+    }
+
+    return groupedTreatments;
+  }
+
+  Map<String, List<TreatmentInfo>> _groupTreatmentsByType(List<DocumentSnapshot> docs) {
+    Map<String, List<TreatmentInfo>> groupedTreatments = {};
+    for (var doc in docs) {
+      var data = doc.data() as Map<String, dynamic>;
+      var treatmentType = data['treatmentType'] ?? 'Неизвестно';
+      var toothNumbers = data['toothNumbers'] != null ? List<int>.from(data['toothNumbers']) : <int>[];
+      var documentId = doc.id;
+      var status = data['status'] ?? 'Неизвестно';
+
+      if (!groupedTreatments.containsKey(treatmentType)) {
+        groupedTreatments[treatmentType] = [];
+      }
+
+      bool found = false;
+      for (var treatmentInfo in groupedTreatments[treatmentType]!) {
+        if (treatmentInfo.toothNumbers.join(", ") == toothNumbers.join(", ")) {
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        groupedTreatments[treatmentType]!.add(TreatmentInfo(treatmentType, toothNumbers, documentId, status));
       }
     }
 
@@ -283,14 +429,16 @@ class TreatmentInfo {
   String treatmentType;
   List<int> toothNumbers;
   String? id;
+  String status;
 
-  TreatmentInfo(this.treatmentType, this.toothNumbers, this.id);
+  TreatmentInfo(this.treatmentType, this.toothNumbers, this.id, this.status);
 
   Map<String, dynamic> toMap() {
     return {
       'treatmentType': treatmentType,
       'toothNumbers': toothNumbers,
-      'id': id
+      'id': id,
+      'status': status
     };
   }
 }
