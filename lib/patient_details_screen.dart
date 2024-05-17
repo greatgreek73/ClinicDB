@@ -4,7 +4,6 @@ import 'edit_patient_screen.dart';
 import 'add_treatment_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:collection/collection.dart';
 
 class PatientDetailsScreen extends StatelessWidget {
   final String patientId;
@@ -111,6 +110,8 @@ class PatientDetailsScreen extends StatelessWidget {
               );
             } else if (snapshot.hasError) {
               return Text('Ошибка: ${snapshot.error}');
+            } else {
+              return Text('Нет данных');
             }
           }
           return Center(child: CircularProgressIndicator());
@@ -121,11 +122,7 @@ class PatientDetailsScreen extends StatelessWidget {
 
   Widget _buildTreatmentsSection(String patientId) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('treatments')
-          .where('patientId', isEqualTo: patientId)
-          .orderBy('date', descending: true)
-          .snapshots(),
+      stream: FirebaseFirestore.instance.collection('treatments').where('patientId', isEqualTo: patientId).orderBy('date', descending: true).snapshots(),
       builder: (context, treatmentSnapshot) {
         if (treatmentSnapshot.hasError) {
           return Text('Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}');
@@ -196,23 +193,64 @@ class PatientDetailsScreen extends StatelessWidget {
   Widget _buildTreatmentsByTypeSection(String patientId) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance.collection('treatments').where('patientId', isEqualTo: patientId).snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.hasError) {
-          return Text('Ошибка или нет данных');
+      builder: (context, treatmentSnapshot) {
+        if (treatmentSnapshot.hasError) {
+          return Text('Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}');
         }
-        var treatmentsByType = _groupTreatmentsByType(snapshot.data!.docs);
+        if (treatmentSnapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        var treatments = _groupTreatmentsByType(treatmentSnapshot.data!.docs);
+
         return ListView.builder(
           shrinkWrap: true,
-          itemCount: treatmentsByType.keys.length,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: treatments.keys.length,
           itemBuilder: (context, index) {
-            var type = treatmentsByType.keys.elementAt(index);
-            var treatmentInfos = treatmentsByType[type]!;
+            String treatmentType = treatments.keys.elementAt(index);
+            var treatmentInfos = treatments[treatmentType]!;
             return ExpansionTile(
-              title: Text(type),
-              children: treatmentInfos.map((info) {
+              title: Text(
+                treatmentType,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              initiallyExpanded: true,
+              children: treatmentInfos.map((treatmentInfo) {
                 return ListTile(
-                  title: Text('Зубы: ${info.toothNumbers.join(", ")}'),
-                  subtitle: Text('Статус: ${info.status}'),
+                  title: Text(
+                    treatmentInfo.treatmentType,
+                    style: TextStyle(fontSize: 16, color: Colors.blue),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (treatmentInfo.toothNumbers != null && treatmentInfo.toothNumbers.isNotEmpty)
+                        Text(
+                          'Зубы: ${treatmentInfo.toothNumbers.join(", ")}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      Text(
+                        'Дата: ${DateFormat('yyyy-MM-dd').format(treatmentInfo.date)}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                      Text('Статус: ${treatmentInfo.status}'),
+                    ],
+                  ),
+                  trailing: Icon(Icons.arrow_forward),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => AddTreatmentScreen(patientId: patientId, treatmentData: treatmentInfo.toMap()),
+                    ),
+                  ),
                 );
               }).toList(),
             );
@@ -298,7 +336,7 @@ class PatientDetailsScreen extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Удалть пациента'),
+          title: Text('Удалить пациента'),
           content: Text('Вы уверены, что хотите удалить этого пациента?'),
           actions: <Widget>[
             TextButton(
@@ -329,7 +367,7 @@ class PatientDetailsScreen extends StatelessWidget {
       var treatmentType = data['treatmentType'];
       var toothNumbers = data['toothNumber'] != null ? List<int>.from(data['toothNumber']) : <int>[];
       var documentId = doc.id;
-      var status = data['status'] ?? 'Неи��вестно';
+      var status = data['status'] ?? 'Неизвестно';
 
       if (!groupedTreatments.containsKey(dateWithoutTime)) {
         groupedTreatments[dateWithoutTime] = [];
@@ -345,7 +383,7 @@ class PatientDetailsScreen extends StatelessWidget {
       }
 
       if (!found) {
-        groupedTreatments[dateWithoutTime]!.add(TreatmentInfo(treatmentType, toothNumbers, documentId, status));
+        groupedTreatments[dateWithoutTime]!.add(TreatmentInfo(treatmentType, toothNumbers, documentId, status, timestamp.toDate()));
       }
     }
 
@@ -357,26 +395,17 @@ class PatientDetailsScreen extends StatelessWidget {
     for (var doc in docs) {
       var data = doc.data() as Map<String, dynamic>;
       var treatmentType = data['treatmentType'] ?? 'Неизвестно';
-      List<int> toothNumbers = data['toothNumber'] != null ? List<int>.from(data['toothNumber']) : [];
+      var toothNumbers = data['toothNumber'] != null ? List<int>.from(data['toothNumber']) : <int>[];
+      var documentId = doc.id;
+      var status = data['status'] ?? 'Неизвестно';
+      var timestamp = data['date'] as Timestamp;
+      var date = timestamp.toDate();
 
       if (!groupedTreatments.containsKey(treatmentType)) {
         groupedTreatments[treatmentType] = [];
       }
 
-      bool found = false;
-      for (var treatmentInfo in groupedTreatments[treatmentType]!) {
-        if (ListEquality().equals(treatmentInfo.toothNumbers, toothNumbers)) {
-          found = true;
-          break;
-        }
-      }
-
-      if (!found) {
-        groupedTreatments[treatmentType]!.add(TreatmentInfo(treatmentType, toothNumbers, doc.id, data['status'] ?? 'Неизвестно'));
-      }
-
-      // Добавим логирование для отладки
-      print("Обработка типа лечения: $treatmentType с номерами зубов: $toothNumbers");
+      groupedTreatments[treatmentType]!.add(TreatmentInfo(treatmentType, toothNumbers, documentId, status, date));
     }
 
     return groupedTreatments;
@@ -388,15 +417,17 @@ class TreatmentInfo {
   List<int> toothNumbers;
   String? id;
   String status;
+  DateTime date;
 
-  TreatmentInfo(this.treatmentType, this.toothNumbers, this.id, this.status);
+  TreatmentInfo(this.treatmentType, this.toothNumbers, this.id, this.status, this.date);
 
   Map<String, dynamic> toMap() {
     return {
       'treatmentType': treatmentType,
       'toothNumbers': toothNumbers,
       'id': id,
-      'status': status
+      'status': status,
+      'date': date,
     };
   }
 }
@@ -410,7 +441,7 @@ class TreatmentSelectionScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: Text('Выбор лечени��')),
+      appBar: AppBar(title: Text('Выбор лечения')),
       body: ListView.builder(
         itemCount: treatments.length,
         itemBuilder: (context, index) {
@@ -425,4 +456,3 @@ class TreatmentSelectionScreen extends StatelessWidget {
     );
   }
 }
- 
