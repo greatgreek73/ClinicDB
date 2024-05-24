@@ -61,7 +61,7 @@ class PatientDetailsScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text('Фамилия: ${patientData['surname'] ?? 'Нет данных'}', style: TextStyle(fontWeight: FontWeight.bold)),
-                          Text('Имя: ${patientData['name'] ?? 'Нет даных'}'),
+                          Text('Имя: ${patientData['name'] ?? 'Нет данных'}'),
                           Text('Возраст: ${patientData['age']}'),
                           Text('Город: ${patientData['city'] ?? 'Нет данных'}'),
                           Text('Телефон: ${patientData['phone'] ?? 'Нет данных'}'),

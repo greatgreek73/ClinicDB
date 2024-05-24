@@ -37,7 +37,11 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
         selectedTeeth = List<int>.from(widget.treatmentData!['toothNumbers']);
       }
       if (widget.treatmentData!['date'] != null) {
-        selectedDate = (widget.treatmentData!['date'] as Timestamp).toDate();
+        if (widget.treatmentData!['date'] is Timestamp) {
+          selectedDate = (widget.treatmentData!['date'] as Timestamp).toDate();
+        } else if (widget.treatmentData!['date'] is DateTime) {
+          selectedDate = widget.treatmentData!['date'];
+        }
       }
     }
   }
