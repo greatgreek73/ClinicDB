@@ -1,11 +1,4 @@
-import 'package:clinicdb/theme/dark_theme.dart';
-import 'package:clinicdb/theme/light_theme.dart';
-import 'package:clinicdb/views/dashboard_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import 'add_patient_screen.dart';
@@ -15,12 +8,6 @@ import 'search_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (!kIsWeb) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      systemNavigationBarColor: Colors.black,
-      systemNavigationBarIconBrightness: Brightness.light,
-    ));
-  }
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -35,12 +22,15 @@ class ClinicDBApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'clinicdb',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.system,
-      theme: LightTheme.theme,
-      darkTheme: DarkTheme.theme,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Colors.white,
+      ),
       home: const LoginPage(),
     );
   }
+}
+
 }
 
 class LoginPage extends StatelessWidget {
