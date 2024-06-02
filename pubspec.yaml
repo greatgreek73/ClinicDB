@@ -25,12 +25,13 @@ dependencies:
   get: ^4.6.6
   cached_network_image: ^3.3.1
   collection: ^1.15.0
+  timelines: ^0.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^3.0.1
+  flutter_lints: ^4.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

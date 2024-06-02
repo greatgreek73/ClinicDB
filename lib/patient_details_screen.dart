@@ -51,15 +51,20 @@ class PatientDetailsScreen extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.active) {
             if (snapshot.hasData) {
               var patientData = snapshot.data!.data() as Map<String, dynamic>;
-              return ListView(
-                children: <Widget>[
-                  Card(
-                    margin: EdgeInsets.all(8),
+              return Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      border: Border.all(width: 1),
+                      color: Colors.white,
+                    ),
                     child: Padding(
-                      padding: EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(10.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
+                        children: [
                           Text('Фамилия: ${patientData['surname'] ?? 'Нет данных'}', style: TextStyle(fontWeight: FontWeight.bold)),
                           Text('Имя: ${patientData['name'] ?? 'Нет данных'}'),
                           Text('Возраст: ${patientData['age']}'),
@@ -70,42 +75,48 @@ class PatientDetailsScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  ListTile(
-                    title: Text('Фото'),
-                    subtitle: patientData['photoUrl'] != null
-                      ? Image.network(
-                          patientData['photoUrl'],
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
-                        )
-                      : SizedBox(
-                          height: 100,
-                          child: Center(child: Text('Нет фото')),
+                  Expanded(
+                    child: ListView(
+                      children: <Widget>[
+                        ListTile(
+                          title: Text('Фото'),
+                          subtitle: patientData['photoUrl'] != null
+                            ? Image.network(
+                                patientData['photoUrl'],
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                              )
+                            : SizedBox(
+                                height: 100,
+                                child: Center(child: Text('Нет фото')),
+                              ),
                         ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Flexible(
+                              flex: 1,
+                              child: Container(
+                                width: MediaQuery.of(context).size.width * 0.2667,
+                                child: _buildTreatmentsSection(patientId),
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Flexible(
+                              flex: 1,
+                              child: Container(
+                                width: MediaQuery.of(context).size.width * 0.2667,
+                                child: _buildTreatmentsByTypeSection(patientId),
+                              ),
+                            ),
+                          ],
+                        ),
+                        _buildPlannedTreatmentSection(context),
+                      ],
+                    ),
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center, // Выравнивание по центру
-                    crossAxisAlignment: CrossAxisAlignment.start, // Выравнивание по верхнему краю
-                    children: [
-                      Flexible(
-                        flex: 1,
-                        child: Container(
-                          width: MediaQuery.of(context).size.width * 0.2667, // Ширина 26.67% от экрана
-                          child: _buildTreatmentsSection(patientId), // Сортировка по датам
-                        ),
-                      ),
-                      SizedBox(width: 16), // Добавление отступа между колонками
-                      Flexible(
-                        flex: 1,
-                        child: Container(
-                          width: MediaQuery.of(context).size.width * 0.2667, // Ширина 26.67% от экрана
-                          child: _buildTreatmentsByTypeSection(patientId), // Сортировка по видам лечения
-                        ),
-                      ),
-                    ],
-                  ),
-                  _buildPlannedTreatmentSection(context),
                 ],
               );
             } else if (snapshot.hasError) {
@@ -142,7 +153,7 @@ class PatientDetailsScreen extends StatelessWidget {
             var treatmentInfos = treatments[date]!;
             return Center(
               child: Container(
-                width: MediaQuery.of(context).size.width * 0.5, // Ширина 50% от экрана
+                width: MediaQuery.of(context).size.width * 0.5,
                 child: Card(
                   margin: EdgeInsets.all(8),
                   child: ExpansionTile(
@@ -150,10 +161,10 @@ class PatientDetailsScreen extends StatelessWidget {
                       DateFormat('yyyy-MM-dd').format(date),
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                    initiallyExpanded: true, // Сразу развернутый вид
+                    initiallyExpanded: true,
                     children: treatmentInfos.map((treatmentInfo) {
                       return ListTile(
-                        leading: Icon(Icons.healing), // Иконка, отражающая тип лечения
+                        leading: Icon(Icons.healing),
                         title: Text(
                           treatmentInfo.treatmentType,
                           style: TextStyle(fontSize: 16, color: Colors.blue),
@@ -165,8 +176,8 @@ class PatientDetailsScreen extends StatelessWidget {
                               'Зубы: ${treatmentInfo.toothNumbers.join(", ")}',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.red, // Изменение цвета
-                                fontWeight: FontWeight.bold, // Жирный шрифт
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                             Text('Статус: ${treatmentInfo.status}'),
