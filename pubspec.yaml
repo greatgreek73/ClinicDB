@@ -25,7 +25,7 @@ dependencies:
   get: ^4.6.6
   cached_network_image: ^3.3.1
   collection: ^1.15.0
-  timelines: ^0.1.0
+  timeline_tile: ^2.0.0
 
 dev_dependencies:
   flutter_test:
