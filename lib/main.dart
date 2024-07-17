@@ -11,21 +11,33 @@ import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  print('WidgetsFlutterBinding initialized'); // Debug print
+
   if (!kIsWeb) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
       systemNavigationBarColor: Colors.black,
       systemNavigationBarIconBrightness: Brightness.light,
     ));
   }
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  print('SystemChrome set'); // Debug print
+
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('Firebase initialized'); // Debug print
+  } catch (e) {
+    print('Error initializing Firebase: $e'); // Debug print
+  }
+
   runApp(ClinicDBApp());
+  print('ClinicDBApp started'); // Debug print
 }
 
 class ClinicDBApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    print('Building ClinicDBApp'); // Debug print
     return MaterialApp(
       title: 'clinicdb',
       theme: ThemeData(
@@ -41,6 +53,7 @@ class ClinicDBApp extends StatelessWidget {
 class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    print('Building LoginPage'); // Debug print
     double buttonWidth = 350;
     double buttonHeight = 60;
     double buttonFontSize = 18;
@@ -85,8 +98,8 @@ class LoginPage extends StatelessWidget {
   Widget _buildButton(BuildContext context, String title, VoidCallback onPressed, double width, double height, double fontSize) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        primary: Color(0xFF0F5BF1),
-        onPrimary: Colors.white,
+        backgroundColor: Color(0xFF0F5BF1),
+        foregroundColor: Colors.white,
         shadowColor: Color(0x40000000),
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),

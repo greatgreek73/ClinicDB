@@ -236,21 +236,21 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
         ElevatedButton(
           onPressed: _pickImage,
           child: Text('Выбрать фотографию', style: TextStyle(color: Colors.white)),
-          style: ElevatedButton.styleFrom(primary: Colors.grey),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
         ),
       ],
     );
   }
 
   Widget _buildSaveButton() {
-    double buttonWidth = 350; // Ширина кнопки
-    double buttonHeight = 60; // Высота кнопки
-    double buttonFontSize = 18; // Размер шрифта кнопки
+    double buttonWidth = 350;
+    double buttonHeight = 60;
+    double buttonFontSize = 18;
 
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        primary: Color(0xFF0F5BF1),
-        onPrimary: Colors.white,
+        backgroundColor: Color(0xFF0F5BF1),
+        foregroundColor: Colors.white,
         shadowColor: Color(0x40000000),
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
