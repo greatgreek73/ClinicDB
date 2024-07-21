@@ -80,14 +80,21 @@ class PatientDetailsScreen extends StatelessWidget {
                   ListTile(
                     title: Text('Фото'),
                     subtitle: patientData['photoUrl'] != null
-                      ? Image.network(
-                          patientData['photoUrl'],
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
+                      ? ClipOval(
+                          child: Image.network(
+                            patientData['photoUrl'],
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          ),
                         )
-                      : SizedBox(
-                          height: 100,
+                      : Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.grey[300],
+                          ),
                           child: Center(child: Text('Нет фото')),
                         ),
                   ),
