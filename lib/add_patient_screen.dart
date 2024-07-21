@@ -180,6 +180,12 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
         if (value == null || value.isEmpty) {
           return 'Пожалуйста, введите $label';
         }
+        if (isNumber && label == 'Возраст') {
+          int? age = int.tryParse(value);
+          if (age == null || age < 0 || age > 120) {
+            return 'Пожалуйста, введите корректный возраст (0-120)';
+          }
+        }
         return null;
       },
     );
