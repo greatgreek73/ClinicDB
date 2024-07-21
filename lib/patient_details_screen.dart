@@ -5,6 +5,8 @@ import 'add_treatment_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+final priceFormatter = NumberFormat('#,###', 'ru_RU');
+
 class PatientDetailsScreen extends StatelessWidget {
   final String patientId;
   final TextEditingController _plannedTreatmentController = TextEditingController();
@@ -405,7 +407,7 @@ class TreatmentSelectionScreen extends StatelessWidget {
         _buildDetailRow('Возраст', '${patientData['age']}', titleStyle, subtitleStyle),
         _buildDetailRow('Город', patientData['city'] ?? 'Нет данных', titleStyle, subtitleStyle),
         _buildDetailRow('Телефон', patientData['phone'] ?? 'Нет данных', titleStyle, subtitleStyle),
-        _buildDetailRow('Цена', '${patientData['price']}', titleStyle, subtitleStyle),
+        _buildDetailRow('Цена', '${priceFormatter.format(patientData['price'])}', titleStyle, subtitleStyle),
       ],
     );
   }
