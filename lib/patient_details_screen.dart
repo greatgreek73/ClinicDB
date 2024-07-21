@@ -91,6 +91,7 @@ class PatientDetailsScreen extends StatelessWidget {
                           child: Center(child: Text('Нет фото')),
                         ),
                   ),
+                  _buildImplantSchema(patientId),
                   _buildTreatmentsSection(patientId),
                   _buildPlannedTreatmentSection(context),
                 ],
@@ -103,6 +104,83 @@ class PatientDetailsScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Widget _buildImplantSchema(String patientId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('treatments')
+          .where('patientId', isEqualTo: patientId)
+          .where('treatmentType', isEqualTo: 'Имплантация')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Text('Ошибка загрузки данных о лечении: ${snapshot.error}');
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        List<int> implantTeeth = [];
+        snapshot.data!.docs.forEach((doc) {
+          var data = doc.data() as Map<String, dynamic>;
+          implantTeeth.addAll(List<int>.from(data['toothNumber']));
+        });
+
+        return Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Имплантация', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                SizedBox(height: 10),
+                SizedBox(
+                  height: 200,
+                  child: GridView.builder(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 16,
+                      childAspectRatio: 1,
+                      crossAxisSpacing: 4,
+                      mainAxisSpacing: 4,
+                    ),
+                    itemCount: 32,
+                    itemBuilder: (context, index) {
+                      int toothNumber = _getToothNumber(index);
+                      bool isTreated = implantTeeth.contains(toothNumber);
+                      return Container(
+                       
+                        decoration: BoxDecoration(
+                          color: isTreated ? Colors.blue : Colors.grey[300],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            toothNumber.toString(),
+                            style: TextStyle(
+                              color: isTreated ? Colors.white : Colors.black,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  int _getToothNumber(int index) {
+    if (index < 8) return index + 11;
+    if (index < 16) return index + 13;
+    if (index < 24) return index + 15;
+    return index + 17;
   }
 
   Widget _buildTreatmentsSection(String patientId) {
@@ -300,7 +378,7 @@ class TreatmentSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     List<String> treatments = [
       '1 сегмент', '2 сегмент', '3 сегмент', '4 сегмент',
-      'Имплантация', 'Обточка', 'Лечение', 'Сдача'
+      'Имплантация', 'Коронка', 'Лечение', 'Сдача'
     ];
 
     return Scaffold(
@@ -319,4 +397,3 @@ class TreatmentSelectionScreen extends StatelessWidget {
     );
   }
 }
-
