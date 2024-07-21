@@ -71,6 +71,85 @@ class PatientDetailsScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildPatientInfoCard(Map<String, dynamic> patientData) {
+    return Card(
+      margin: EdgeInsets.all(16),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildPatientPhoto(patientData['photoUrl']),
+            SizedBox(height: 16),
+            _buildPatientDetails(patientData),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPatientPhoto(String? photoUrl) {
+    return ClipOval(
+      child: photoUrl != null
+          ? Image.network(
+              photoUrl,
+              width: 150,
+              height: 150,
+              fit: BoxFit.cover,
+            )
+          : Container(
+              width: 150,
+              height: 150,
+              color: Colors.grey[300],
+              child: Icon(Icons.person, size: 100, color: Colors.grey[600]),
+            ),
+    );
+  }
+
+  Widget _buildPatientDetails(Map<String, dynamic> patientData) {
+    TextStyle titleStyle = TextStyle(
+      fontSize: 18,
+      fontWeight: FontWeight.bold,
+      fontFamily: 'Geller Text Regular',
+    );
+    TextStyle subtitleStyle = TextStyle(
+      fontSize: 16,
+      fontFamily: 'Geller Text Regular',
+    );
+
+    bool hadConsultation = patientData['hadConsultation'] == true;
+
+return Column(
+  children: [
+    _buildDetailRow('Фамилия', patientData['surname'] ?? 'No data', titleStyle, subtitleStyle),
+    _buildDetailRow('Имя', patientData['name'] ?? 'No data', titleStyle, subtitleStyle),
+    _buildDetailRow('Возраст', '${patientData['age']}', titleStyle, subtitleStyle),
+    _buildDetailRow('Город', patientData['city'] ?? 'No data', titleStyle, subtitleStyle),
+    _buildDetailRow('Телефон', patientData['phone'] ?? 'No data', titleStyle, subtitleStyle),
+    _buildDetailRow('Цена', '${priceFormatter.format(patientData['price'])}', titleStyle, subtitleStyle),
+    _buildDetailRow('Консультация', hadConsultation ? 'Да' : 'Нет', titleStyle, subtitleStyle),
+      ],
+    );
+  }
+  Widget _buildDetailRow(String title, String value, TextStyle titleStyle, TextStyle subtitleStyle) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 1,
+            child: Text(title, style: titleStyle, textAlign: TextAlign.right),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            flex: 2,
+            child: Text(value, style: subtitleStyle, textAlign: TextAlign.left),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildImplantSchema(String patientId) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -114,7 +193,6 @@ class PatientDetailsScreen extends StatelessWidget {
                       int toothNumber = _getToothNumber(index);
                       bool isTreated = implantTeeth.contains(toothNumber);
                       return Container(
-                       
                         decoration: BoxDecoration(
                           color: isTreated ? Colors.blue : Colors.grey[300],
                           shape: BoxShape.circle,
@@ -191,7 +269,6 @@ class PatientDetailsScreen extends StatelessWidget {
       },
     );
   }
-
   Widget _buildPlannedTreatmentSection(BuildContext context) {
     return Container(
       padding: EdgeInsets.all(10),
@@ -362,79 +439,3 @@ class TreatmentSelectionScreen extends StatelessWidget {
     );
   }
 }
-  Widget _buildPatientInfoCard(Map<String, dynamic> patientData) {
-    return Card(
-      margin: EdgeInsets.all(16),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildPatientPhoto(patientData['photoUrl']),
-            SizedBox(height: 16),
-            _buildPatientDetails(patientData),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPatientPhoto(String? photoUrl) {
-    return ClipOval(
-      child: photoUrl != null
-          ? Image.network(
-              photoUrl,
-              width: 150,
-              height: 150,
-              fit: BoxFit.cover,
-            )
-          : Container(
-              width: 150,
-              height: 150,
-              color: Colors.grey[300],
-              child: Icon(Icons.person, size: 100, color: Colors.grey[600]),
-            ),
-    );
-  }
-
-  Widget _buildPatientDetails(Map<String, dynamic> patientData) {
-    TextStyle titleStyle = TextStyle(
-      fontSize: 18,
-      fontWeight: FontWeight.bold,
-      fontFamily: 'Geller Text Regular',
-    );
-    TextStyle subtitleStyle = TextStyle(
-      fontSize: 16,
-      fontFamily: 'Geller Text Regular',
-    );
-
-    return Column(
-      children: [
-        _buildDetailRow('Surname', patientData['surname'] ?? 'No data', titleStyle, subtitleStyle),
-        _buildDetailRow('Name', patientData['name'] ?? 'No data', titleStyle, subtitleStyle),
-        _buildDetailRow('Age', '${patientData['age']}', titleStyle, subtitleStyle),
-        _buildDetailRow('City', patientData['city'] ?? 'No data', titleStyle, subtitleStyle),
-        _buildDetailRow('Phone', patientData['phone'] ?? 'No data', titleStyle, subtitleStyle),
-        _buildDetailRow('Price', '${priceFormatter.format(patientData['price'])}', titleStyle, subtitleStyle),
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(String title, String value, TextStyle titleStyle, TextStyle subtitleStyle) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Expanded(
-            flex: 1,
-            child: Text(title, style: titleStyle, textAlign: TextAlign.right),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            flex: 2,
-            child: Text(value, style: subtitleStyle, textAlign: TextAlign.left),
-          ),
-        ],
-      ),
-    );
-  }

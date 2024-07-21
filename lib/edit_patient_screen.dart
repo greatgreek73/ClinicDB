@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:image_picker/image_picker.dart'; // Импорт Image Picker
-import 'package:firebase_storage/firebase_storage.dart'; // Импорт для работы с Firebase Storage
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 
 class EditPatientScreen extends StatefulWidget {
@@ -16,16 +16,16 @@ class EditPatientScreen extends StatefulWidget {
 class _EditPatientScreenState extends State<EditPatientScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  bool _isMale = true; // Добавлено для выбора пола
-  File? _image; // Добавлено для хранения изображения
+  bool _isMale = true;
+  File? _image;
+  bool _hadConsultation = false;
 
-  // Контроллеры для текстовых полей
   final _nameController = TextEditingController();
   final _surnameController = TextEditingController();
   final _ageController = TextEditingController();
   final _cityController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _priceController = TextEditingController(); // Контроллер для цены
+  final _priceController = TextEditingController();
 
   @override
   void initState() {
@@ -40,7 +40,7 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
     _ageController.dispose();
     _cityController.dispose();
     _phoneController.dispose();
-    _priceController.dispose(); // Не забывайте освобождать контроллер
+    _priceController.dispose();
     super.dispose();
   }
 
@@ -85,6 +85,7 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
       _phoneController.text = patientData['phone'];
       _priceController.text = patientData['price'].toString();
       _isMale = patientData['gender'] == 'Мужской';
+      _hadConsultation = patientData['hadConsultation'] ?? false;
 
       setState(() {
         _isLoading = false;
@@ -121,6 +122,7 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
         'price': double.parse(_priceController.text),
         'searchKey': updatedSearchKey,
         'gender': _isMale ? 'Мужской' : 'Женский',
+        'hadConsultation': _hadConsultation,
       };
 
       if (imageUrl != null) {
@@ -233,16 +235,30 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
                     SizedBox(height: 20),
                     if (_image != null)
                       SizedBox(
-                        width: 200, // Ширина изображения
-                        height: 200, // Высота изображения
+                        width: 200,
+                        height: 200,
                         child: Image.file(
                           _image!,
-                          fit: BoxFit.cover, // Способ заполнения контейнера
+                          fit: BoxFit.cover,
                         ),
                       ),
                     ElevatedButton(
                       onPressed: _pickImage,
                       child: Text('Выбрать фотографию'),
+                    ),
+                    SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _hadConsultation,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              _hadConsultation = value ?? false;
+                            });
+                          },
+                        ),
+                        Text('Был на консультации'),
+                      ],
                     ),
                     SizedBox(height: 20),
                     ElevatedButton(

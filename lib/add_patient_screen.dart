@@ -21,6 +21,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   final MaskedTextController _phoneController = MaskedTextController(mask: '(000) 000-00-00');
   bool _isMale = true;
   File? _image;
+  bool _hadConsultation = false;
 
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
@@ -89,6 +90,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
       'gender': gender,
       'searchKey': surname.toLowerCase(),
       'photoUrl': imageUrl,
+      'hadConsultation': _hadConsultation,
     }).then((result) {
       print('Пациент добавлен');
       Navigator.of(context).pushReplacement(
@@ -141,6 +143,8 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
                   SizedBox(height: 40),
                   _buildImageSection(),
                   SizedBox(height: 40),
+                  _buildConsultationCheckbox(),
+                  SizedBox(height: 20),
                   _buildSaveButton(),
                 ],
               ),
@@ -244,6 +248,22 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
           child: Text('Выбрать фотографию', style: TextStyle(color: Colors.white)),
           style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
         ),
+      ],
+    );
+  }
+
+  Widget _buildConsultationCheckbox() {
+    return Row(
+      children: [
+        Checkbox(
+          value: _hadConsultation,
+          onChanged: (bool? value) {
+            setState(() {
+              _hadConsultation = value ?? false;
+            });
+          },
+        ),
+        Text('Был на консультации'),
       ],
     );
   }
