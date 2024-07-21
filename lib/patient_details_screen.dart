@@ -397,17 +397,24 @@ class TreatmentSelectionScreen extends StatelessWidget {
   }
 
   Widget _buildPatientDetails(Map<String, dynamic> patientData) {
-    TextStyle titleStyle = TextStyle(fontSize: 18, fontWeight: FontWeight.bold);
-    TextStyle subtitleStyle = TextStyle(fontSize: 16);
+    TextStyle titleStyle = TextStyle(
+      fontSize: 18,
+      fontWeight: FontWeight.bold,
+      fontFamily: 'Geller Text Regular',
+    );
+    TextStyle subtitleStyle = TextStyle(
+      fontSize: 16,
+      fontFamily: 'Geller Text Regular',
+    );
 
     return Column(
       children: [
-        _buildDetailRow('Фамилия', patientData['surname'] ?? 'Нет данных', titleStyle, subtitleStyle),
-        _buildDetailRow('Имя', patientData['name'] ?? 'Нет данных', titleStyle, subtitleStyle),
-        _buildDetailRow('Возраст', '${patientData['age']}', titleStyle, subtitleStyle),
-        _buildDetailRow('Город', patientData['city'] ?? 'Нет данных', titleStyle, subtitleStyle),
-        _buildDetailRow('Телефон', patientData['phone'] ?? 'Нет данных', titleStyle, subtitleStyle),
-        _buildDetailRow('Цена', '${priceFormatter.format(patientData['price'])}', titleStyle, subtitleStyle),
+        _buildDetailRow('Surname', patientData['surname'] ?? 'No data', titleStyle, subtitleStyle),
+        _buildDetailRow('Name', patientData['name'] ?? 'No data', titleStyle, subtitleStyle),
+        _buildDetailRow('Age', '${patientData['age']}', titleStyle, subtitleStyle),
+        _buildDetailRow('City', patientData['city'] ?? 'No data', titleStyle, subtitleStyle),
+        _buildDetailRow('Phone', patientData['phone'] ?? 'No data', titleStyle, subtitleStyle),
+        _buildDetailRow('Price', '${priceFormatter.format(patientData['price'])}', titleStyle, subtitleStyle),
       ],
     );
   }
