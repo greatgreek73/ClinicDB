@@ -53,51 +53,7 @@ class PatientDetailsScreen extends StatelessWidget {
               var patientData = snapshot.data!.data() as Map<String, dynamic>;
               return ListView(
                 children: <Widget>[
-                  ListTile(
-                    title: Text('Фамилия'),
-                    subtitle: Text(patientData['surname'] ?? 'Нет данных'),
-                  ),
-                  ListTile(
-                    title: Text('Имя'),
-                    subtitle: Text(patientData['name'] ?? 'Нет данных'),
-                  ),
-                  ListTile(
-                    title: Text('Возраст'),
-                    subtitle: Text('${patientData['age']}'),
-                  ),
-                  ListTile(
-                    title: Text('Город'),
-                    subtitle: Text(patientData['city'] ?? 'Нет данных'),
-                  ),
-                  ListTile(
-                    title: Text('Телефон'),
-                    subtitle: Text(patientData['phone'] ?? 'Нет данных'),
-                  ),
-                  ListTile(
-                    title: Text('Цена'),
-                    subtitle: Text('${patientData['price']}'),
-                  ),
-                  ListTile(
-                    title: Text('Фото'),
-                    subtitle: patientData['photoUrl'] != null
-                      ? ClipOval(
-                          child: Image.network(
-                            patientData['photoUrl'],
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.grey[300],
-                          ),
-                          child: Center(child: Text('Нет фото')),
-                        ),
-                  ),
+                  _buildPatientInfoCard(patientData),
                   _buildImplantSchema(patientId),
                   _buildTreatmentsSection(patientId),
                   _buildPlannedTreatmentSection(context),
@@ -404,3 +360,72 @@ class TreatmentSelectionScreen extends StatelessWidget {
     );
   }
 }
+  Widget _buildPatientInfoCard(Map<String, dynamic> patientData) {
+    return Card(
+      margin: EdgeInsets.all(16),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildPatientPhoto(patientData['photoUrl']),
+            SizedBox(height: 16),
+            _buildPatientDetails(patientData),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPatientPhoto(String? photoUrl) {
+    return ClipOval(
+      child: photoUrl != null
+          ? Image.network(
+              photoUrl,
+              width: 150,
+              height: 150,
+              fit: BoxFit.cover,
+            )
+          : Container(
+              width: 150,
+              height: 150,
+              color: Colors.grey[300],
+              child: Icon(Icons.person, size: 100, color: Colors.grey[600]),
+            ),
+    );
+  }
+
+  Widget _buildPatientDetails(Map<String, dynamic> patientData) {
+    TextStyle titleStyle = TextStyle(fontSize: 18, fontWeight: FontWeight.bold);
+    TextStyle subtitleStyle = TextStyle(fontSize: 16);
+
+    return Column(
+      children: [
+        _buildDetailRow('Фамилия', patientData['surname'] ?? 'Нет данных', titleStyle, subtitleStyle),
+        _buildDetailRow('Имя', patientData['name'] ?? 'Нет данных', titleStyle, subtitleStyle),
+        _buildDetailRow('Возраст', '${patientData['age']}', titleStyle, subtitleStyle),
+        _buildDetailRow('Город', patientData['city'] ?? 'Нет данных', titleStyle, subtitleStyle),
+        _buildDetailRow('Телефон', patientData['phone'] ?? 'Нет данных', titleStyle, subtitleStyle),
+        _buildDetailRow('Цена', '${patientData['price']}', titleStyle, subtitleStyle),
+      ],
+    );
+  }
+
+  Widget _buildDetailRow(String title, String value, TextStyle titleStyle, TextStyle subtitleStyle) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 1,
+            child: Text(title, style: titleStyle, textAlign: TextAlign.right),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            flex: 2,
+            child: Text(value, style: subtitleStyle, textAlign: TextAlign.left),
+          ),
+        ],
+      ),
+    );
+  }
