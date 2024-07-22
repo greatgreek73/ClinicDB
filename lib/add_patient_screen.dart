@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'patient_details_screen.dart';
 import 'package:flutter_masked_text2/flutter_masked_text2.dart';
+import 'package:intl/intl.dart';
+import 'payment.dart';
 
 class AddPatientScreen extends StatefulWidget {
   @override
@@ -16,12 +18,14 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   final TextEditingController _surnameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final MoneyMaskedTextController _priceController = MoneyMaskedTextController(decimalSeparator: '', thousandSeparator: '.', precision: 0, leftSymbol: '');
+  final MoneyMaskedTextController _paidController = MoneyMaskedTextController(decimalSeparator: '', thousandSeparator: '.', precision: 0, leftSymbol: '');
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   final MaskedTextController _phoneController = MaskedTextController(mask: '(000) 000-00-00');
   bool _isMale = true;
   File? _image;
   bool _hadConsultation = false;
+  DateTime _paymentDate = DateTime.now();
 
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
@@ -56,6 +60,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
 
     final int age = int.parse(_ageController.text);
     final double price = _priceController.numberValue;
+    final double paid = _paidController.numberValue;
     final String city = _cityController.text;
     final String phone = _phoneController.text;
     final String gender = _isMale ? 'Мужской' : 'Женский';
@@ -91,6 +96,9 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
       'searchKey': surname.toLowerCase(),
       'photoUrl': imageUrl,
       'hadConsultation': _hadConsultation,
+      'payments': [
+        Payment(amount: paid, date: _paymentDate).toMap()
+      ],
     }).then((result) {
       print('Пациент добавлен');
       Navigator.of(context).pushReplacement(
@@ -144,6 +152,9 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
                   _buildImageSection(),
                   SizedBox(height: 40),
                   _buildConsultationCheckbox(),
+                  SizedBox(height: 20),
+                  _buildFieldWithPadding(_buildPriceFormField(_paidController, 'Первый платеж', labelColor), fieldWidth),
+                  _buildDatePicker(),
                   SizedBox(height: 20),
                   _buildSaveButton(),
                 ],
@@ -265,6 +276,27 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
         ),
         Text('Был на консультации'),
       ],
+    );
+  }
+
+  Widget _buildDatePicker() {
+    return ListTile(
+      title: Text("Дата платежа"),
+      subtitle: Text("${DateFormat('yyyy-MM-dd').format(_paymentDate)}"),
+      trailing: Icon(Icons.calendar_today),
+      onTap: () async {
+        DateTime? picked = await showDatePicker(
+          context: context,
+          initialDate: _paymentDate,
+          firstDate: DateTime(2000),
+          lastDate: DateTime.now(),
+        );
+        if (picked != null) {
+          setState(() {
+            _paymentDate = picked;
+          });
+        }
+      },
     );
   }
 

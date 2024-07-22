@@ -4,6 +4,7 @@ import 'edit_patient_screen.dart';
 import 'add_treatment_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'payment.dart';
 
 final priceFormatter = NumberFormat('#,###', 'ru_RU');
 
@@ -55,7 +56,7 @@ class PatientDetailsScreen extends StatelessWidget {
               var patientData = snapshot.data!.data() as Map<String, dynamic>;
               return ListView(
                 children: <Widget>[
-                  _buildPatientInfoCard(patientData),
+                  _buildPatientInfoCard(context, patientData),
                   _buildImplantSchema(patientId),
                   _buildTreatmentsSection(patientId),
                   _buildPlannedTreatmentSection(context),
@@ -70,86 +71,124 @@ class PatientDetailsScreen extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildPatientInfoCard(Map<String, dynamic> patientData) {
-    return Card(
-      margin: EdgeInsets.all(16),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildPatientPhoto(patientData['photoUrl']),
-            SizedBox(height: 16),
-            _buildPatientDetails(patientData),
+  Widget _buildPatientInfoCard(BuildContext context, Map<String, dynamic> patientData) {
+    return Center(
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.5,
+        margin: EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: Offset(0, 3),
+            ),
           ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _buildPatientPhoto(patientData['photoUrl']),
+              SizedBox(height: 16),
+              _buildPatientDetails(patientData),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildPatientPhoto(String? photoUrl) {
-    return ClipOval(
-      child: photoUrl != null
-          ? Image.network(
-              photoUrl,
-              width: 150,
-              height: 150,
-              fit: BoxFit.cover,
-            )
-          : Container(
-              width: 150,
-              height: 150,
-              color: Colors.grey[300],
-              child: Icon(Icons.person, size: 100, color: Colors.grey[600]),
-            ),
+    return Container(
+      width: 120,
+      height: 120,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.blue, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.5),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: photoUrl != null
+            ? Image.network(
+                photoUrl,
+                fit: BoxFit.cover,
+              )
+            : Container(
+                color: Colors.grey[300],
+                child: Icon(Icons.person, size: 80, color: Colors.grey[600]),
+              ),
+      ),
     );
   }
 
   Widget _buildPatientDetails(Map<String, dynamic> patientData) {
     TextStyle titleStyle = TextStyle(
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: FontWeight.bold,
-      fontFamily: 'Geller Text Regular',
+      color: Colors.blue[800],
     );
     TextStyle subtitleStyle = TextStyle(
-      fontSize: 16,
-      fontFamily: 'Geller Text Regular',
+      fontSize: 14,
+      color: Colors.black87,
     );
 
     bool hadConsultation = patientData['hadConsultation'] == true;
 
-return Column(
-  children: [
-    _buildDetailRow('Фамилия', patientData['surname'] ?? 'No data', titleStyle, subtitleStyle),
-    _buildDetailRow('Имя', patientData['name'] ?? 'No data', titleStyle, subtitleStyle),
-    _buildDetailRow('Возраст', '${patientData['age']}', titleStyle, subtitleStyle),
-    _buildDetailRow('Город', patientData['city'] ?? 'No data', titleStyle, subtitleStyle),
-    _buildDetailRow('Телефон', patientData['phone'] ?? 'No data', titleStyle, subtitleStyle),
-    _buildDetailRow('Цена', '${priceFormatter.format(patientData['price'])}', titleStyle, subtitleStyle),
-    _buildDetailRow('Консультация', hadConsultation ? 'Да' : 'Нет', titleStyle, subtitleStyle),
+    var paymentsData = patientData['payments'] as List<dynamic>? ?? [];
+    List<Payment> payments = paymentsData.map((p) => Payment.fromMap(p)).toList();
+    double totalPaid = payments.fold(0, (sum, payment) => sum + payment.amount);
+
+    return Column(
+      children: [
+        _buildDetailRow('ФИО', '${patientData['surname']} ${patientData['name']}', titleStyle, subtitleStyle),
+        _buildDetailRow('Возраст', '${patientData['age']}', titleStyle, subtitleStyle),
+        _buildDetailRow('Город', patientData['city'] ?? 'Нет данных', titleStyle, subtitleStyle),
+        _buildDetailRow('Телефон', patientData['phone'] ?? 'Нет данных', titleStyle, subtitleStyle),
+        _buildDetailRow('Цена', '${priceFormatter.format(patientData['price'])} ₽', titleStyle, subtitleStyle),
+        _buildDetailRow('Оплачено', '${priceFormatter.format(totalPaid)} ₽', titleStyle, subtitleStyle),
+        _buildDetailRow('Осталось', '${priceFormatter.format((patientData['price'] ?? 0) - totalPaid)} ₽', titleStyle, subtitleStyle),
+        _buildDetailRow('Консультация', hadConsultation ? 'Да' : 'Нет', titleStyle, subtitleStyle),
+        SizedBox(height: 16),
+        _buildPaymentsHistory(payments),
       ],
     );
   }
+
   Widget _buildDetailRow(String title, String value, TextStyle titleStyle, TextStyle subtitleStyle) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            flex: 1,
-            child: Text(title, style: titleStyle, textAlign: TextAlign.right),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            flex: 2,
-            child: Text(value, style: subtitleStyle, textAlign: TextAlign.left),
-          ),
+          Text(title, style: titleStyle),
+          Text(value, style: subtitleStyle),
         ],
       ),
     );
   }
 
+  Widget _buildPaymentsHistory(List<Payment> payments) {
+    return ExpansionTile(
+      title: Text('История платежей', style: TextStyle(fontWeight: FontWeight.bold)),
+      children: payments.map((payment) => ListTile(
+        title: Text('${priceFormatter.format(payment.amount)} ₽'),
+        subtitle: Text(DateFormat('yyyy-MM-dd').format(payment.date)),
+        trailing: Icon(Icons.payment, color: Colors.green),
+      )).toList(),
+    );
+  }
   Widget _buildImplantSchema(String patientId) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance

@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import 'package:intl/intl.dart';
+import 'payment.dart';
 
 class EditPatientScreen extends StatefulWidget {
   final String patientId;
@@ -19,6 +21,7 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
   bool _isMale = true;
   File? _image;
   bool _hadConsultation = false;
+  List<Payment> _payments = [];
 
   final _nameController = TextEditingController();
   final _surnameController = TextEditingController();
@@ -87,6 +90,9 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
       _isMale = patientData['gender'] == 'Мужской';
       _hadConsultation = patientData['hadConsultation'] ?? false;
 
+      var paymentsData = patientData['payments'] as List<dynamic>? ?? [];
+      _payments = paymentsData.map((p) => Payment.fromMap(p)).toList();
+
       setState(() {
         _isLoading = false;
       });
@@ -123,6 +129,7 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
         'searchKey': updatedSearchKey,
         'gender': _isMale ? 'Мужской' : 'Женский',
         'hadConsultation': _hadConsultation,
+        'payments': _payments.map((p) => p.toMap()).toList(),
       };
 
       if (imageUrl != null) {
@@ -261,6 +268,13 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
                       ],
                     ),
                     SizedBox(height: 20),
+                    Text('Платежи', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    _buildPaymentsList(),
+                    ElevatedButton(
+                      onPressed: _addNewPayment,
+                      child: Text('Добавить платеж'),
+                    ),
+                    SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: _savePatient,
                       child: Text('Сохранить изменения'),
@@ -269,6 +283,117 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildPaymentsList() {
+    return Column(
+      children: _payments.map((payment) => ListTile(
+        title: Text('${NumberFormat.currency(locale: 'ru_RU', symbol: '₽', decimalDigits: 2).format(payment.amount)}'),
+        subtitle: Text(DateFormat('yyyy-MM-dd').format(payment.date)),
+        trailing: IconButton(
+          icon: Icon(Icons.edit),
+          onPressed: () => _editPayment(payment),
+        ),
+      )).toList(),
+    );
+  }
+
+  void _addNewPayment() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (BuildContext context) => PaymentDialog(),
+    );
+
+    if (result != null) {
+      setState(() {
+        _payments.add(Payment(amount: result['amount'], date: result['date']));
+      });
+    }
+  }
+
+  void _editPayment(Payment payment) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (BuildContext context) => PaymentDialog(initialPayment: payment),
+    );
+
+    if (result != null) {
+      setState(() {
+        int index = _payments.indexOf(payment);
+        _payments[index] = Payment(amount: result['amount'], date: result['date']);
+      });
+    }
+  }
+}
+
+class PaymentDialog extends StatefulWidget {
+  final Payment? initialPayment;
+
+  PaymentDialog({this.initialPayment});
+
+  @override
+  _PaymentDialogState createState() => _PaymentDialogState();
+}
+
+class _PaymentDialogState extends State<PaymentDialog> {
+  late TextEditingController _amountController;
+  late DateTime _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController = TextEditingController(text: widget.initialPayment?.amount.toString() ?? '');
+    _selectedDate = widget.initialPayment?.date ?? DateTime.now();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.initialPayment == null ? 'Добавить платеж' : 'Редактировать платеж'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _amountController,
+            decoration: InputDecoration(labelText: 'Сумма'),
+            keyboardType: TextInputType.number,
+          ),
+          ListTile(
+            title: Text("Дата платежа"),
+            subtitle: Text(DateFormat('yyyy-MM-dd').format(_selectedDate)),
+            trailing: Icon(Icons.calendar_today),
+            onTap: () async {
+              DateTime? picked = await showDatePicker(
+                context: context,
+                initialDate: _selectedDate,
+                firstDate: DateTime(2000),
+                lastDate: DateTime.now(),
+              );
+              if (picked != null) {
+                setState(() {
+                  _selectedDate = picked;
+                });
+              }
+            },
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          child: Text('Отмена'),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        TextButton(
+          child: Text('Сохранить'),
+          onPressed: () {
+            Navigator.of(context).pop({
+              'amount': double.parse(_amountController.text),
+              'date': _selectedDate,
+            });
+          },
+        ),
+      ],
     );
   }
 }
