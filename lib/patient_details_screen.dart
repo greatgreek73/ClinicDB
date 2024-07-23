@@ -57,7 +57,7 @@ class PatientDetailsScreen extends StatelessWidget {
               return ListView(
                 children: <Widget>[
                   _buildPatientInfoCard(context, patientData),
-                  _buildImplantSchema(patientId),
+                  _buildTreatmentSchemas(patientId),
                   _buildTreatmentsSection(patientId),
                   _buildPlannedTreatmentSection(context),
                 ],
@@ -189,12 +189,33 @@ class PatientDetailsScreen extends StatelessWidget {
       )).toList(),
     );
   }
-  Widget _buildImplantSchema(String patientId) {
+
+  Widget _buildTreatmentSchemas(String patientId) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildTreatmentSchema(patientId, 'Имплантация', Colors.blue)),
+            Expanded(child: _buildTreatmentSchema(patientId, 'Коронка', Colors.green)),
+          ],
+        ),
+        SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _buildTreatmentSchema(patientId, 'Кариес', Colors.orange)),
+            Expanded(child: _buildTreatmentSchema(patientId, 'Удаление', Colors.red)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTreatmentSchema(String patientId, String treatmentType, Color color) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('treatments')
           .where('patientId', isEqualTo: patientId)
-          .where('treatmentType', isEqualTo: 'Имплантация')
+          .where('treatmentType', isEqualTo: treatmentType)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -204,36 +225,36 @@ class PatientDetailsScreen extends StatelessWidget {
           return Center(child: CircularProgressIndicator());
         }
 
-        List<int> implantTeeth = [];
+        List<int> treatedTeeth = [];
         snapshot.data!.docs.forEach((doc) {
           var data = doc.data() as Map<String, dynamic>;
-          implantTeeth.addAll(List<int>.from(data['toothNumber']));
+          treatedTeeth.addAll(List<int>.from(data['toothNumber']));
         });
 
         return Card(
           child: Padding(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Имплантация', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                SizedBox(height: 10),
+                Text(treatmentType, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                SizedBox(height: 5),
                 SizedBox(
-                  height: 200,
+                  height: 100,
                   child: GridView.builder(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 16,
                       childAspectRatio: 1,
-                      crossAxisSpacing: 4,
-                      mainAxisSpacing: 4,
+                      crossAxisSpacing: 2,
+                      mainAxisSpacing: 2,
                     ),
                     itemCount: 32,
                     itemBuilder: (context, index) {
                       int toothNumber = _getToothNumber(index);
-                      bool isTreated = implantTeeth.contains(toothNumber);
+                      bool isTreated = treatedTeeth.contains(toothNumber);
                       return Container(
                         decoration: BoxDecoration(
-                          color: isTreated ? Colors.blue : Colors.grey[300],
+                          color: isTreated ? color : Colors.grey[300],
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -241,7 +262,7 @@ class PatientDetailsScreen extends StatelessWidget {
                             toothNumber.toString(),
                             style: TextStyle(
                               color: isTreated ? Colors.white : Colors.black,
-                              fontSize: 10,
+                              fontSize: 8,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -264,7 +285,6 @@ class PatientDetailsScreen extends StatelessWidget {
     if (index < 24) return index + 15;
     return index + 17;
   }
-
   Widget _buildTreatmentsSection(String patientId) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -308,6 +328,7 @@ class PatientDetailsScreen extends StatelessWidget {
       },
     );
   }
+
   Widget _buildPlannedTreatmentSection(BuildContext context) {
     return Container(
       padding: EdgeInsets.all(10),
@@ -459,7 +480,7 @@ class TreatmentSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     List<String> treatments = [
       '1 сегмент', '2 сегмент', '3 сегмент', '4 сегмент',
-      'Имплантация', 'Коронка', 'Лечение', 'Сдача'
+      'Имплантация', 'Коронки', 'Лечение', 'Удаление'
     ];
 
     return Scaffold(
