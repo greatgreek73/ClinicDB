@@ -1,23 +1,43 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'edit_patient_screen.dart';
 import 'add_treatment_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'payment.dart';
+import 'dart:io';
+
 
 final priceFormatter = NumberFormat('#,###', 'ru_RU');
 
-class PatientDetailsScreen extends StatelessWidget {
+class PatientDetailsScreen extends StatefulWidget {
   final String patientId;
-  final TextEditingController _plannedTreatmentController = TextEditingController();
 
   PatientDetailsScreen({required this.patientId});
 
   @override
-  Widget build(BuildContext context) {
-    _loadPlannedTreatment();
+  _PatientDetailsScreenState createState() => _PatientDetailsScreenState();
+}
 
+class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
+  final TextEditingController _plannedTreatmentController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPlannedTreatment();
+  }
+
+  @override
+  void dispose() {
+    _plannedTreatmentController.dispose();
+    super.dispose();
+  }
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Детали Пациента'),
@@ -27,7 +47,7 @@ class PatientDetailsScreen extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => EditPatientScreen(patientId: patientId),
+                  builder: (context) => EditPatientScreen(patientId: widget.patientId),
                 ),
               );
             },
@@ -37,19 +57,19 @@ class PatientDetailsScreen extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => AddTreatmentScreen(patientId: patientId),
+                  builder: (context) => AddTreatmentScreen(patientId: widget.patientId),
                 ),
               );
             },
           ),
           IconButton(
             icon: Icon(Icons.delete),
-            onPressed: () => _confirmDeletion(context, patientId),
+            onPressed: () => _confirmDeletion(context, widget.patientId),
           ),
         ],
       ),
       body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance.collection('patients').doc(patientId).snapshots(),
+        stream: FirebaseFirestore.instance.collection('patients').doc(widget.patientId).snapshots(),
         builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
           if (snapshot.connectionState == ConnectionState.active) {
             if (snapshot.hasData) {
@@ -57,8 +77,9 @@ class PatientDetailsScreen extends StatelessWidget {
               return ListView(
                 children: <Widget>[
                   _buildPatientInfoCard(context, patientData),
-                  _buildTreatmentSchemas(patientId),
-                  _buildTreatmentsSection(patientId),
+                  _buildTreatmentSchemas(widget.patientId),
+                  _buildTreatmentsSection(widget.patientId),
+                  _buildAdditionalPhotosSection(patientData),
                   _buildPlannedTreatmentSection(context),
                 ],
               );
@@ -189,20 +210,19 @@ class PatientDetailsScreen extends StatelessWidget {
       )).toList(),
     );
   }
-
   Widget _buildTreatmentSchemas(String patientId) {
     return Column(
       children: [
         Row(
           children: [
             Expanded(child: _buildTreatmentSchema(patientId, 'Имплантация', Colors.blue)),
-            Expanded(child: _buildTreatmentSchema(patientId, 'Коронка', Colors.green)),
+            Expanded(child: _buildTreatmentSchema(patientId, 'Коронки', Colors.green)),
           ],
         ),
         SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _buildTreatmentSchema(patientId, 'Кариес', Colors.orange)),
+            Expanded(child: _buildTreatmentSchema(patientId, 'Лечение', Colors.orange)),
             Expanded(child: _buildTreatmentSchema(patientId, 'Удаление', Colors.red)),
           ],
         ),
@@ -285,50 +305,187 @@ class PatientDetailsScreen extends StatelessWidget {
     if (index < 24) return index + 15;
     return index + 17;
   }
-  Widget _buildTreatmentsSection(String patientId) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('treatments')
-          .where('patientId', isEqualTo: patientId)
-          .orderBy('date', descending: true)
-          .snapshots(),
-      builder: (context, treatmentSnapshot) {
-        if (treatmentSnapshot.hasError) {
-          return Text('Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}');
-        }
-        if (treatmentSnapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
 
-        var treatments = _groupTreatmentsByDate(treatmentSnapshot.data!.docs);
+Widget _buildTreatmentsSection(String patientId) {
+  return StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('treatments')
+        .where('patientId', isEqualTo: patientId)
+        .orderBy('date', descending: true)
+        .snapshots(),
+    builder: (context, treatmentSnapshot) {
+      if (treatmentSnapshot.connectionState == ConnectionState.waiting) {
+        return Center(child: CircularProgressIndicator());
+      }
 
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: treatments.keys.length,
-          itemBuilder: (context, index) {
-            DateTime date = treatments.keys.elementAt(index);
-            var treatmentInfos = treatments[date]!;
-            return ExpansionTile(
-              title: Text(DateFormat('yyyy-MM-dd').format(date)),
-              children: treatmentInfos.map((treatmentInfo) {
-                return ListTile(
-                  title: Text(treatmentInfo.treatmentType),
-                  subtitle: Text('Зубы: ${treatmentInfo.toothNumbers.join(", ")}'),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => AddTreatmentScreen(patientId: patientId, treatmentData: treatmentInfo.toMap()),
-                    ),
-                  ),
-                );
-              }).toList(),
+      if (treatmentSnapshot.hasError) {
+        print('Error in _buildTreatmentsSection: ${treatmentSnapshot.error}');
+        print('Error stack trace: ${treatmentSnapshot.stackTrace}');
+
+        if (treatmentSnapshot.error.toString().contains('The query requires an index')) {
+          final urlMatch = RegExp(r'https://console\.firebase\.google\.com[^\s]+').firstMatch(treatmentSnapshot.error.toString());
+          final indexUrl = urlMatch?.group(0);
+          if (indexUrl != null) {
+            return Column(
+              children: [
+                Text('Требуется создание индекса. Нажмите на ссылку ниже для создания:'),
+                InkWell(
+                  child: Text(indexUrl, style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: indexUrl));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Ссылка скопирована в буфер обмена')),
+                    );
+                  },
+                ),
+              ],
             );
-          },
+          }
+        }
+        return Text('Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}');
+      }
+
+      if (!treatmentSnapshot.hasData || treatmentSnapshot.data!.docs.isEmpty) {
+        print('No treatment data found for patient: $patientId');
+        return Text('Нет данных о лечении');
+      }
+
+      print('Treatment data loaded successfully. Document count: ${treatmentSnapshot.data!.docs.length}');
+      var treatments = _groupTreatmentsByDate(treatmentSnapshot.data!.docs);
+
+      return ListView.builder(
+        shrinkWrap: true,
+        physics: NeverScrollableScrollPhysics(),
+        itemCount: treatments.keys.length,
+        itemBuilder: (context, index) {
+          DateTime date = treatments.keys.elementAt(index);
+          var treatmentInfos = treatments[date]!;
+          return ExpansionTile(
+            title: Text(DateFormat('yyyy-MM-dd').format(date)),
+            children: treatmentInfos.map((treatmentInfo) {
+              return ListTile(
+                title: Text(treatmentInfo.treatmentType),
+                subtitle: Text('Зубы: ${treatmentInfo.toothNumbers.join(", ")}'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => AddTreatmentScreen(patientId: patientId, treatmentData: treatmentInfo.toMap()),
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        },
+      );
+    },
+  );
+}
+
+  Widget _buildAdditionalPhotosSection(Map<String, dynamic> patientData) {
+    List<dynamic> additionalPhotos = patientData['additionalPhotos'] ?? [];
+    
+    return Card(
+      margin: EdgeInsets.all(8),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Дополнительные фото', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ElevatedButton(
+                  onPressed: _addAdditionalPhoto,
+                  child: Text('Добавить'),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            if (additionalPhotos.isEmpty)
+              Text('Нет дополнительных фотографий')
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+                itemCount: additionalPhotos.length,
+                itemBuilder: (context, index) {
+                  var photo = additionalPhotos[index];
+                  return GestureDetector(
+                    onTap: () => _showImageDialog(photo),
+                    child: Image.network(
+                      photo['url'],
+                      fit: BoxFit.cover,
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showImageDialog(Map<String, dynamic> photo) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.network(photo['url']),
+              Padding(
+                padding: EdgeInsets.all(8),
+                child: Text(photo['description']),
+              ),
+              Text(DateFormat('yyyy-MM-dd').format((photo['dateAdded'] as Timestamp).toDate())),
+            ],
+          ),
         );
       },
     );
   }
 
+  Future<void> _addAdditionalPhoto() async {
+    final ImagePicker _picker = ImagePicker();
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    
+    if (image != null) {
+      File imageFile = File(image.path);
+      String fileName = 'additional_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      
+      try {
+        // Загрузка изображения в Firebase Storage
+        TaskSnapshot uploadTask = await FirebaseStorage.instance
+            .ref('patients/${widget.patientId}/$fileName')
+            .putFile(imageFile);
+        
+        String imageUrl = await uploadTask.ref.getDownloadURL();
+        
+        // Обновление документа пациента в Firestore
+        await FirebaseFirestore.instance.collection('patients').doc(widget.patientId).update({
+          'additionalPhotos': FieldValue.arrayUnion([
+            {
+              'url': imageUrl,
+              'description': 'Дополнительное фото', // Можно добавить диалог для ввода описания
+              'dateAdded': Timestamp.now(),
+            }
+          ]),
+        });
+        
+        // Обновление UI
+        setState(() {});
+      } catch (e) {
+        print('Error uploading additional photo: $e');
+        // Добавьте обработку ошибок, например, показ SnackBar
+      }
+    }
+  }
   Widget _buildPlannedTreatmentSection(BuildContext context) {
     return Container(
       padding: EdgeInsets.all(10),
@@ -391,12 +548,12 @@ class PatientDetailsScreen extends StatelessWidget {
 
   Future<void> _savePlannedTreatment(String treatment) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('planned_treatment_$patientId', treatment);
+    await prefs.setString('planned_treatment_${widget.patientId}', treatment);
   }
 
   Future<void> _loadPlannedTreatment() async {
     final prefs = await SharedPreferences.getInstance();
-    String treatment = prefs.getString('planned_treatment_$patientId') ?? '';
+    String treatment = prefs.getString('planned_treatment_${widget.patientId}') ?? '';
     _plannedTreatmentController.text = treatment;
   }
 

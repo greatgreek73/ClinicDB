@@ -8,10 +8,11 @@ import 'package:flutter/foundation.dart';
 import 'reports_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'specific_patients_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  print('WidgetsFlutterBinding initialized'); // Debug print
+  print('WidgetsFlutterBinding initialized');
 
   if (!kIsWeb) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
@@ -19,25 +20,25 @@ void main() async {
       systemNavigationBarIconBrightness: Brightness.light,
     ));
   }
-  print('SystemChrome set'); // Debug print
+  print('SystemChrome set');
 
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('Firebase initialized'); // Debug print
+    print('Firebase initialized');
   } catch (e) {
-    print('Error initializing Firebase: $e'); // Debug print
+    print('Error initializing Firebase: $e');
   }
 
   runApp(ClinicDBApp());
-  print('ClinicDBApp started'); // Debug print
+  print('ClinicDBApp started');
 }
 
 class ClinicDBApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    print('Building ClinicDBApp'); // Debug print
+    print('Building ClinicDBApp');
     return MaterialApp(
       title: 'clinicdb',
       theme: ThemeData(
@@ -50,10 +51,30 @@ class ClinicDBApp extends StatelessWidget {
   }
 }
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
+  @override
+  _LoginPageState createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  int specificPatientsCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSpecificPatientsCount();
+  }
+
+  Future<void> _loadSpecificPatientsCount() async {
+    int count = await countSpecificPatients();
+    setState(() {
+      specificPatientsCount = count;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    print('Building LoginPage'); // Debug print
+    print('Building LoginPage');
     double buttonWidth = 350;
     double buttonHeight = 60;
     double buttonFontSize = 18;
@@ -85,6 +106,9 @@ class LoginPage extends StatelessWidget {
                     _buildButton(context, 'Отчеты', () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsScreen()));
                     }, buttonWidth, buttonHeight, buttonFontSize),
+                    _buildButton(context, 'Специфические пациенты ($specificPatientsCount)', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => SpecificPatientsScreen()));
+                    }, buttonWidth, buttonHeight, buttonFontSize),
                   ],
                 ),
               ),
@@ -109,6 +133,30 @@ class LoginPage extends StatelessWidget {
       child: Text(title, style: TextStyle(fontSize: fontSize)),
     );
   }
+}
+
+Future<int> countSpecificPatients() async {
+  QuerySnapshot patientsSnapshot = await FirebaseFirestore.instance
+      .collection('patients')
+      .where('price', isGreaterThanOrEqualTo: 300000)
+      .where('price', isLessThanOrEqualTo: 400000)
+      .get();
+
+  int count = 0;
+  for (var patientDoc in patientsSnapshot.docs) {
+    QuerySnapshot treatmentsSnapshot = await FirebaseFirestore.instance
+        .collection('treatments')
+        .where('patientId', isEqualTo: patientDoc.id)
+        .where('date', isGreaterThanOrEqualTo: DateTime(2024, 7, 1))
+        .where('date', isLessThan: DateTime(2024, 8, 1))
+        .get();
+
+    if (treatmentsSnapshot.docs.isNotEmpty) {
+      count++;
+    }
+  }
+
+  return count;
 }
 
 class ImplantationSummaryWidget extends StatefulWidget {
