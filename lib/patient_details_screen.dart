@@ -1,15 +1,13 @@
-import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import 'edit_patient_screen.dart';
 import 'add_treatment_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'payment.dart';
-import 'dart:io';
-
 
 final priceFormatter = NumberFormat('#,###', 'ru_RU');
 
@@ -36,6 +34,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     _plannedTreatmentController.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -211,92 +210,183 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     );
   }
   Widget _buildTreatmentSchemas(String patientId) {
-    return Column(
-      children: [
-        Row(
+    return FutureBuilder<Map<String, int>>(
+      future: _getTreatmentCounts(patientId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Text('Ошибка: ${snapshot.error}');
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Text('Нет данных о лечении');
+        }
+
+        var sortedTreatments = snapshot.data!.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        var topFourTreatments = sortedTreatments.take(4).toList();
+
+        return Column(
           children: [
-            Expanded(child: _buildTreatmentSchema(patientId, 'Имплантация', Colors.blue)),
-            Expanded(child: _buildTreatmentSchema(patientId, 'Коронки', Colors.green)),
+            Row(
+              children: [
+                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[0].key, _getColor(topFourTreatments[0].key))),
+                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[1].key, _getColor(topFourTreatments[1].key))),
+              ],
+            ),
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[2].key, _getColor(topFourTreatments[2].key))),
+                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[3].key, _getColor(topFourTreatments[3].key))),
+              ],
+            ),
           ],
-        ),
-        SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(child: _buildTreatmentSchema(patientId, 'Лечение', Colors.orange)),
-            Expanded(child: _buildTreatmentSchema(patientId, 'Удаление', Colors.red)),
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
 
   Widget _buildTreatmentSchema(String patientId, String treatmentType, Color color) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('treatments')
-          .where('patientId', isEqualTo: patientId)
-          .where('treatmentType', isEqualTo: treatmentType)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Text('Ошибка загрузки данных о лечении: ${snapshot.error}');
-        }
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
+  return StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('treatments')
+        .where('patientId', isEqualTo: patientId)
+        .where('treatmentType', isEqualTo: treatmentType)
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return Text('Ошибка загрузки данных о лечении: ${snapshot.error}');
+      }
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return Center(child: CircularProgressIndicator());
+      }
 
-        List<int> treatedTeeth = [];
-        snapshot.data!.docs.forEach((doc) {
-          var data = doc.data() as Map<String, dynamic>;
-          treatedTeeth.addAll(List<int>.from(data['toothNumber']));
-        });
+      List<int> treatedTeeth = [];
+      snapshot.data!.docs.forEach((doc) {
+        var data = doc.data() as Map<String, dynamic>;
+        treatedTeeth.addAll(List<int>.from(data['toothNumber']));
+      });
 
-        return Card(
-          child: Padding(
-            padding: EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(treatmentType, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                SizedBox(height: 5),
-                SizedBox(
-                  height: 100,
-                  child: GridView.builder(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 16,
-                      childAspectRatio: 1,
-                      crossAxisSpacing: 2,
-                      mainAxisSpacing: 2,
-                    ),
-                    itemCount: 32,
-                    itemBuilder: (context, index) {
-                      int toothNumber = _getToothNumber(index);
-                      bool isTreated = treatedTeeth.contains(toothNumber);
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: isTreated ? color : Colors.grey[300],
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            toothNumber.toString(),
-                            style: TextStyle(
-                              color: isTreated ? Colors.white : Colors.black,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                            ),
+      return Card(
+        child: Padding(
+          padding: EdgeInsets.all(8),
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  treatmentType,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              SizedBox(height: 10),
+              SizedBox(
+                height: 100,
+                child: GridView.builder(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 16,
+                    childAspectRatio: 1,
+                    crossAxisSpacing: 2,
+                    mainAxisSpacing: 2,
+                  ),
+                  itemCount: 32,
+                  itemBuilder: (context, index) {
+                    int toothNumber = _getToothNumber(index);
+                    bool isTreated = treatedTeeth.contains(toothNumber);
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: isTreated ? color : Colors.grey[300],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          toothNumber.toString(),
+                          style: TextStyle(
+                            color: isTreated ? Colors.white : Colors.black,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
+}
+
+  Future<Map<String, int>> _getTreatmentCounts(String patientId) async {
+    var treatmentCounts = <String, int>{
+      'Кариес': 0,
+      'Имплантация': 0,
+      'Удаление': 0,
+      'Сканирование': 0,
+      'Эндо': 0,
+      'Формирователь': 0,
+      'PMMA': 0,
+      'Коронка': 0,
+      'Абатмент': 0,
+      'Сдача PMMA': 0,
+      'Сдача коронки': 0,
+      'Сдача абатмент': 0,
+      'Удаление импланта': 0
+    };
+
+    var snapshot = await FirebaseFirestore.instance
+        .collection('treatments')
+        .where('patientId', isEqualTo: patientId)
+        .get();
+
+    for (var doc in snapshot.docs) {
+      var data = doc.data();
+      var treatmentType = data['treatmentType'] as String;
+      var toothNumbers = (data['toothNumber'] as List?)?.length ?? 0;
+      
+      if (treatmentCounts.containsKey(treatmentType)) {
+        treatmentCounts[treatmentType] = treatmentCounts[treatmentType]! + toothNumbers;
+      } else {
+        print('Неизвестный тип лечения: $treatmentType');
+      }
+    }
+
+    return treatmentCounts;
+  }
+
+  Color _getColor(String treatmentType) {
+    final colors = {
+      'Кариес': Colors.red,
+      'Имплантация': Colors.blue,
+      'Удаление': Colors.orange,
+      'Сканирование': Colors.purple,
+      'Эндо': Colors.green,
+      'Формирователь': Colors.teal,
+      'PMMA': Colors.amber,
+      'Коронка': Colors.indigo,
+      'Абатмент': Colors.pink,
+      'Сдача PMMA': Colors.cyan,
+      'Сдача коронки': Colors.deepPurple,
+      'Сдача абатмент': Colors.lightGreen,
+      'Удаление импланта': Colors.deepOrange,
+    };
+
+    return colors[treatmentType] ?? Colors.grey;
   }
 
   int _getToothNumber(int index) {
@@ -305,80 +395,56 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     if (index < 24) return index + 15;
     return index + 17;
   }
-
-Widget _buildTreatmentsSection(String patientId) {
-  return StreamBuilder<QuerySnapshot>(
-    stream: FirebaseFirestore.instance
-        .collection('treatments')
-        .where('patientId', isEqualTo: patientId)
-        .orderBy('date', descending: true)
-        .snapshots(),
-    builder: (context, treatmentSnapshot) {
-      if (treatmentSnapshot.connectionState == ConnectionState.waiting) {
-        return Center(child: CircularProgressIndicator());
-      }
-
-      if (treatmentSnapshot.hasError) {
-        print('Error in _buildTreatmentsSection: ${treatmentSnapshot.error}');
-        print('Error stack trace: ${treatmentSnapshot.stackTrace}');
-
-        if (treatmentSnapshot.error.toString().contains('The query requires an index')) {
-          final urlMatch = RegExp(r'https://console\.firebase\.google\.com[^\s]+').firstMatch(treatmentSnapshot.error.toString());
-          final indexUrl = urlMatch?.group(0);
-          if (indexUrl != null) {
-            return Column(
-              children: [
-                Text('Требуется создание индекса. Нажмите на ссылку ниже для создания:'),
-                InkWell(
-                  child: Text(indexUrl, style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(text: indexUrl));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Ссылка скопирована в буфер обмена')),
-                    );
-                  },
-                ),
-              ],
-            );
-          }
+  Widget _buildTreatmentsSection(String patientId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('treatments')
+          .where('patientId', isEqualTo: patientId)
+          .orderBy('date', descending: true)
+          .snapshots(),
+      builder: (context, treatmentSnapshot) {
+        if (treatmentSnapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
         }
-        return Text('Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}');
-      }
 
-      if (!treatmentSnapshot.hasData || treatmentSnapshot.data!.docs.isEmpty) {
-        print('No treatment data found for patient: $patientId');
-        return Text('Нет данных о лечении');
-      }
+        if (treatmentSnapshot.hasError) {
+          print('Error in _buildTreatmentsSection: ${treatmentSnapshot.error}');
+          print('Error stack trace: ${treatmentSnapshot.stackTrace}');
+          return Text('Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}');
+        }
 
-      print('Treatment data loaded successfully. Document count: ${treatmentSnapshot.data!.docs.length}');
-      var treatments = _groupTreatmentsByDate(treatmentSnapshot.data!.docs);
+        if (!treatmentSnapshot.hasData || treatmentSnapshot.data!.docs.isEmpty) {
+          return Text('Нет данных о лечении');
+        }
 
-      return ListView.builder(
-        shrinkWrap: true,
-        physics: NeverScrollableScrollPhysics(),
-        itemCount: treatments.keys.length,
-        itemBuilder: (context, index) {
-          DateTime date = treatments.keys.elementAt(index);
-          var treatmentInfos = treatments[date]!;
-          return ExpansionTile(
-            title: Text(DateFormat('yyyy-MM-dd').format(date)),
-            children: treatmentInfos.map((treatmentInfo) {
-              return ListTile(
-                title: Text(treatmentInfo.treatmentType),
-                subtitle: Text('Зубы: ${treatmentInfo.toothNumbers.join(", ")}'),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => AddTreatmentScreen(patientId: patientId, treatmentData: treatmentInfo.toMap()),
+        var treatments = _groupTreatmentsByDate(treatmentSnapshot.data!.docs);
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: treatments.keys.length,
+          itemBuilder: (context, index) {
+            DateTime date = treatments.keys.elementAt(index);
+            var treatmentInfos = treatments[date]!;
+            return ExpansionTile(
+              title: Text(DateFormat('yyyy-MM-dd').format(date)),
+              children: treatmentInfos.map((treatmentInfo) {
+                return ListTile(
+                  title: Text(treatmentInfo.treatmentType),
+                  subtitle: Text('Зубы: ${treatmentInfo.toothNumbers.join(", ")}'),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => AddTreatmentScreen(patientId: patientId, treatmentData: treatmentInfo.toMap()),
+                    ),
                   ),
-                ),
-              );
-            }).toList(),
-          );
-        },
-      );
-    },
-  );
-}
+                );
+              }).toList(),
+            );
+          },
+        );
+      },
+    );
+  }
 
   Widget _buildAdditionalPhotosSection(Map<String, dynamic> patientData) {
     List<dynamic> additionalPhotos = patientData['additionalPhotos'] ?? [];
@@ -460,32 +526,29 @@ Widget _buildTreatmentsSection(String patientId) {
       String fileName = 'additional_${DateTime.now().millisecondsSinceEpoch}.jpg';
       
       try {
-        // Загрузка изображения в Firebase Storage
         TaskSnapshot uploadTask = await FirebaseStorage.instance
             .ref('patients/${widget.patientId}/$fileName')
             .putFile(imageFile);
         
         String imageUrl = await uploadTask.ref.getDownloadURL();
         
-        // Обновление документа пациента в Firestore
         await FirebaseFirestore.instance.collection('patients').doc(widget.patientId).update({
           'additionalPhotos': FieldValue.arrayUnion([
             {
               'url': imageUrl,
-              'description': 'Дополнительное фото', // Можно добавить диалог для ввода описания
+              'description': 'Дополнительное фото',
               'dateAdded': Timestamp.now(),
             }
           ]),
         });
         
-        // Обновление UI
         setState(() {});
       } catch (e) {
         print('Error uploading additional photo: $e');
-        // Добавьте обработку ошибок, например, показ SnackBar
       }
     }
   }
+
   Widget _buildPlannedTreatmentSection(BuildContext context) {
     return Container(
       padding: EdgeInsets.all(10),
