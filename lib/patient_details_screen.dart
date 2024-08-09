@@ -8,6 +8,7 @@ import 'add_treatment_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'payment.dart';
+import 'notes_widget.dart';
 
 final priceFormatter = NumberFormat('#,###', 'ru_RU');
 
@@ -80,6 +81,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                   _buildTreatmentsSection(widget.patientId),
                   _buildAdditionalPhotosSection(patientData),
                   _buildPlannedTreatmentSection(context),
+                  NotesWidget(patientId: widget.patientId),
                 ],
               );
             } else if (snapshot.hasError) {
@@ -249,88 +251,88 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   }
 
   Widget _buildTreatmentSchema(String patientId, String treatmentType, Color color) {
-  return StreamBuilder<QuerySnapshot>(
-    stream: FirebaseFirestore.instance
-        .collection('treatments')
-        .where('patientId', isEqualTo: patientId)
-        .where('treatmentType', isEqualTo: treatmentType)
-        .snapshots(),
-    builder: (context, snapshot) {
-      if (snapshot.hasError) {
-        return Text('Ошибка загрузки данных о лечении: ${snapshot.error}');
-      }
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return Center(child: CircularProgressIndicator());
-      }
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('treatments')
+          .where('patientId', isEqualTo: patientId)
+          .where('treatmentType', isEqualTo: treatmentType)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Text('Ошибка загрузки данных о лечении: ${snapshot.error}');
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
 
-      List<int> treatedTeeth = [];
-      snapshot.data!.docs.forEach((doc) {
-        var data = doc.data() as Map<String, dynamic>;
-        treatedTeeth.addAll(List<int>.from(data['toothNumber']));
-      });
+        List<int> treatedTeeth = [];
+        snapshot.data!.docs.forEach((doc) {
+          var data = doc.data() as Map<String, dynamic>;
+          treatedTeeth.addAll(List<int>.from(data['toothNumber']));
+        });
 
-      return Card(
-        child: Padding(
-          padding: EdgeInsets.all(8),
-          child: Column(
-            children: [
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  treatmentType,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+        return Card(
+          child: Padding(
+            padding: EdgeInsets.all(8),
+            child: Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              SizedBox(height: 10),
-              SizedBox(
-                height: 100,
-                child: GridView.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 16,
-                    childAspectRatio: 1,
-                    crossAxisSpacing: 2,
-                    mainAxisSpacing: 2,
+                  child: Text(
+                    treatmentType,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  itemCount: 32,
-                  itemBuilder: (context, index) {
-                    int toothNumber = _getToothNumber(index);
-                    bool isTreated = treatedTeeth.contains(toothNumber);
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: isTreated ? color : Colors.grey[300],
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          toothNumber.toString(),
-                          style: TextStyle(
-                            color: isTreated ? Colors.white : Colors.black,
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
+                ),
+                SizedBox(height: 10),
+                SizedBox(
+                  height: 100,
+                  child: GridView.builder(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 16,
+                      childAspectRatio: 1,
+                      crossAxisSpacing: 2,
+                      mainAxisSpacing: 2,
+                    ),
+                    itemCount: 32,
+                    itemBuilder: (context, index) {
+                      int toothNumber = _getToothNumber(index);
+                      bool isTreated = treatedTeeth.contains(toothNumber);
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: isTreated ? color : Colors.grey[300],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            toothNumber.toString(),
+                            style: TextStyle(
+                              color: isTreated ? Colors.white : Colors.black,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   Future<Map<String, int>> _getTreatmentCounts(String patientId) async {
     var treatmentCounts = <String, int>{
@@ -344,7 +346,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       'Коронка': 0,
       'Абатмент': 0,
       'Сдача PMMA': 0,
-      'Сдача коронки': 0,
+      'Сдача коронка': 0,
       'Сдача абатмент': 0,
       'Удаление импланта': 0
     };
@@ -381,7 +383,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       'Коронка': Colors.indigo,
       'Абатмент': Colors.pink,
       'Сдача PMMA': Colors.cyan,
-      'Сдача коронки': Colors.deepPurple,
+      'Сдача коронка': Colors.deepPurple,
       'Сдача абатмент': Colors.lightGreen,
       'Удаление импланта': Colors.deepOrange,
     };
