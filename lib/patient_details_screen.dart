@@ -156,6 +156,15 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   }
 
   Widget _buildPatientDetails(Map<String, dynamic> patientData) {
+    TextStyle nameStyle = TextStyle(
+      fontSize: 24,
+      fontWeight: FontWeight.bold,
+      color: Colors.blue[800],
+    );
+    TextStyle ageStyle = TextStyle(
+      fontSize: 20,
+      color: Colors.black87,
+    );
     TextStyle titleStyle = TextStyle(
       fontSize: 16,
       fontWeight: FontWeight.bold,
@@ -174,8 +183,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
 
     return Column(
       children: [
-        _buildDetailRow('ФИО', '${patientData['surname']} ${patientData['name']}', titleStyle, subtitleStyle),
-        _buildDetailRow('Возраст', '${patientData['age']}', titleStyle, subtitleStyle),
+        Text('${patientData['surname']} ${patientData['name']}', style: nameStyle, textAlign: TextAlign.center),
+        Text('${patientData['age']} лет', style: ageStyle, textAlign: TextAlign.center),
+        SizedBox(height: 16),
         _buildDetailRow('Город', patientData['city'] ?? 'Нет данных', titleStyle, subtitleStyle),
         _buildDetailRow('Телефон', patientData['phone'] ?? 'Нет данных', titleStyle, subtitleStyle),
         _buildDetailRow('Цена', '${priceFormatter.format(patientData['price'])} ₽', titleStyle, subtitleStyle),
