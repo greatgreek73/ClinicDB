@@ -165,6 +165,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       fontSize: 20,
       color: Colors.black87,
     );
+    TextStyle contactStyle = TextStyle(
+      fontSize: 22,
+      color: Colors.black87,
+    );
     TextStyle titleStyle = TextStyle(
       fontSize: 16,
       fontWeight: FontWeight.bold,
@@ -185,9 +189,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       children: [
         Text('${patientData['surname']} ${patientData['name']}', style: nameStyle, textAlign: TextAlign.center),
         Text('${patientData['age']} лет', style: ageStyle, textAlign: TextAlign.center),
+        Text('${patientData['city'] ?? 'Нет данных'} | ${patientData['phone'] ?? 'Нет данных'}', style: contactStyle, textAlign: TextAlign.center),
         SizedBox(height: 16),
-        _buildDetailRow('Город', patientData['city'] ?? 'Нет данных', titleStyle, subtitleStyle),
-        _buildDetailRow('Телефон', patientData['phone'] ?? 'Нет данных', titleStyle, subtitleStyle),
         _buildDetailRow('Цена', '${priceFormatter.format(patientData['price'])} ₽', titleStyle, subtitleStyle),
         _buildDetailRow('Оплачено', '${priceFormatter.format(totalPaid)} ₽', titleStyle, subtitleStyle),
         _buildDetailRow('Осталось', '${priceFormatter.format((patientData['price'] ?? 0) - totalPaid)} ₽', titleStyle, subtitleStyle),
