@@ -392,11 +392,14 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   }
 
   int _getToothNumber(int index) {
-    if (index < 8) return index + 11;
-    if (index < 16) return index + 13;
-    if (index < 24) return index + 15;
-    return index + 17;
+  if (index < 16) {
+    // Верхний ряд: 18 17 16 15 14 13 12 11 21 22 23 24 25 26 27 28
+    return index < 8 ? 18 - index : 21 + (index - 8);
+  } else {
+    // Нижний ряд: 48 47 46 45 44 43 42 41 31 32 33 34 35 36 37 38
+    return index < 24 ? 48 - (index - 16) : 31 + (index - 24);
   }
+}
   Widget _buildTreatmentsSection(String patientId) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
