@@ -9,6 +9,8 @@ import 'reports_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'specific_patients_screen.dart';
+import 'theme/app_theme.dart';
+import 'screens/new_dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,12 +43,8 @@ class ClinicDBApp extends StatelessWidget {
     print('Building ClinicDBApp');
     return MaterialApp(
       title: 'clinicdb',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Colors.white,
-        appBarTheme: AppBarTheme(color: Colors.white),
-      ),
-      home: LoginPage(),
+      theme: AppTheme.themeData,
+      home: NewDashboardScreen(),
     );
   }
 }
