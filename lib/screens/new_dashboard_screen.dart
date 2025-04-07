@@ -368,27 +368,63 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
   }
 
   Widget _buildActionButton(String title, IconData icon, VoidCallback onPressed) {
-    // Простая кнопка без сложных эффектов
+    // Кнопка с глубоким индиго градиентом и белым текстом
     return Container(
       width: double.infinity,
       height: 50, // фиксированная высота для стабильности
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        // Яркий синий цвет без градиента
-        color: Color(0xFF1E88E5),
+        borderRadius: BorderRadius.circular(15), // увеличенный радиус
+        // Глубокий индиго градиент
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF5C6BC0), // Светлый индиго
+            Color(0xFF3949AB), // Глубокий индиго (основной цвет)
+            Color(0xFF303F9F), // Темный индиго
+          ],
+          stops: [0.0, 0.5, 1.0],
+        ),
         boxShadow: [
+          // Основная тень с индиго оттенком
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 4,
+            color: Color(0xFF303F9F).withOpacity(0.3),
+            blurRadius: 8,
             spreadRadius: 0,
             offset: Offset(2, 2),
           ),
+          // Светлая тень сверху для объема
+          BoxShadow(
+            color: Colors.white.withOpacity(0.1),
+            blurRadius: 4,
+            spreadRadius: -1,
+            offset: Offset(0, -1),
+          ),
         ],
+        // Единая тонкая граница для совместимости с borderRadius
+        border: Border.all(
+          color: Color(0xFF7986CB).withOpacity(0.7),
+          width: 1,
+        ),
+      ),
+      // Деликатный эффект блика сверху
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.center,
+          colors: [
+            Colors.white.withOpacity(0.4),
+            Colors.white.withOpacity(0.2),
+            Colors.transparent,
+          ],
+          stops: [0.0, 0.3, 0.6],
+        ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(15), // Увеличиваем до того же значения, что и у контейнера
           onTap: onPressed,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -397,14 +433,14 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
               children: [
                 Icon(
                   icon,
-                  color: Colors.white,
+                  color: Colors.white, // Белый цвет для иконки
                   size: 20,
                 ),
                 SizedBox(width: 12),
                 Text(
                   title,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Colors.white, // Белый цвет для текста
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
