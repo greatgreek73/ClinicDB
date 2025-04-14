@@ -1,0 +1,1 @@
+C:\ClinicDB\build\app\intermediates\cxx\RelWithDebInfo\0231s4zx\obj\arm64-v8a

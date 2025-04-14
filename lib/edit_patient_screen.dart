@@ -21,6 +21,9 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
   bool _isMale = true;
   File? _image;
   bool _hadConsultation = false;
+  bool _waitingList = false;
+  bool _secondStage = false;
+  bool _hotPatient = false;
   List<Payment> _payments = [];
 
   final _nameController = TextEditingController();
@@ -89,6 +92,9 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
       _priceController.text = patientData['price'].toString();
       _isMale = patientData['gender'] == 'Мужской';
       _hadConsultation = patientData['hadConsultation'] ?? false;
+      _waitingList = patientData['waitingList'] ?? false;
+      _secondStage = patientData['secondStage'] ?? false;
+      _hotPatient = patientData['hotPatient'] ?? false;
 
       var paymentsData = patientData['payments'] as List<dynamic>? ?? [];
       _payments = paymentsData.map((p) => Payment.fromMap(p)).toList();
@@ -129,6 +135,9 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
         'searchKey': updatedSearchKey,
         'gender': _isMale ? 'Мужской' : 'Женский',
         'hadConsultation': _hadConsultation,
+        'waitingList': _waitingList,
+        'secondStage': _secondStage,
+        'hotPatient': _hotPatient,
         'payments': _payments.map((p) => p.toMap()).toList(),
       };
 
@@ -265,6 +274,45 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
                           },
                         ),
                         Text('Был на консультации'),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _waitingList,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              _waitingList = value ?? false;
+                            });
+                          },
+                        ),
+                        Text('Список ожидания'),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _secondStage,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              _secondStage = value ?? false;
+                            });
+                          },
+                        ),
+                        Text('Второй этап'),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _hotPatient,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              _hotPatient = value ?? false;
+                            });
+                          },
+                        ),
+                        Text('Горящий пациент'),
                       ],
                     ),
                     SizedBox(height: 20),

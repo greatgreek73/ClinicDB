@@ -1,0 +1,2 @@
+C:/ClinicDB/android/app/.cxx/RelWithDebInfo/0231s4zx/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/ClinicDB/android/app/.cxx/RelWithDebInfo/0231s4zx/armeabi-v7a/CMakeFiles/rebuild_cache.dir

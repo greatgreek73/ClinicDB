@@ -23,11 +23,41 @@ class PatientDetailsScreen extends StatefulWidget {
 
 class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   final TextEditingController _plannedTreatmentController = TextEditingController();
+  bool _waitingList = false;
+  bool _secondStage = false;
+  bool _hotPatient = false;
 
   @override
   void initState() {
     super.initState();
     _loadPlannedTreatment();
+  }
+
+  Future<void> _updatePatientField(String field, dynamic value) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('patients')
+          .doc(widget.patientId)
+          .update({field: value});
+    } catch (e) {
+      print('Ошибка при обновлении поля $field: $e');
+    }
+  }
+
+  Widget _buildToggleRow(String title, bool value, Function(bool?) onChanged, TextStyle titleStyle) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: titleStyle),
+          Checkbox(
+            value: value,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -195,6 +225,24 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         _buildDetailRow('Оплачено', '${priceFormatter.format(totalPaid)} ₽', titleStyle, subtitleStyle),
         _buildDetailRow('Осталось', '${priceFormatter.format((patientData['price'] ?? 0) - totalPaid)} ₽', titleStyle, subtitleStyle),
         _buildDetailRow('Консультация', hadConsultation ? 'Да' : 'Нет', titleStyle, subtitleStyle),
+        _buildToggleRow('Список ожидания', patientData['waitingList'] == true, (value) {
+          setState(() {
+            _waitingList = value ?? false;
+          });
+          _updatePatientField('waitingList', value);
+        }, titleStyle),
+        _buildToggleRow('Второй этап', patientData['secondStage'] == true, (value) {
+          setState(() {
+            _secondStage = value ?? false;
+          });
+          _updatePatientField('secondStage', value);
+        }, titleStyle),
+        _buildToggleRow('Горящий пациент', patientData['hotPatient'] == true, (value) {
+          setState(() {
+            _hotPatient = value ?? false;
+          });
+          _updatePatientField('hotPatient', value);
+        }, titleStyle),
         SizedBox(height: 16),
         _buildPaymentsHistory(payments),
       ],

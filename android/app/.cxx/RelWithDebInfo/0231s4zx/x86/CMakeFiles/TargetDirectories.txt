@@ -1,0 +1,2 @@
+C:/ClinicDB/android/app/.cxx/RelWithDebInfo/0231s4zx/x86/CMakeFiles/edit_cache.dir
+C:/ClinicDB/android/app/.cxx/RelWithDebInfo/0231s4zx/x86/CMakeFiles/rebuild_cache.dir

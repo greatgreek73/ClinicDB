@@ -17,9 +17,17 @@ void main() async {
   print('WidgetsFlutterBinding initialized');
 
   if (!kIsWeb) {
+    // Включаем полноэкранный режим (скрываем строку состояния и навигационную панель)
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.immersiveSticky,  // Полностью иммерсивный режим
+    );
+    
+    // Устанавливаем цвет и прозрачность навигационной панели на случай, если она появится по свайпу
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      systemNavigationBarColor: Colors.black,
+      systemNavigationBarColor: Colors.transparent,
+      statusBarColor: Colors.transparent,
       systemNavigationBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.light,
     ));
   }
   print('SystemChrome set');
@@ -44,6 +52,7 @@ class ClinicDBApp extends StatelessWidget {
     return MaterialApp(
       title: 'clinicdb',
       theme: AppTheme.themeData,
+      debugShowCheckedModeBanner: false, // Скрыть баннер debug режима
       home: NewDashboardScreen(),
     );
   }
