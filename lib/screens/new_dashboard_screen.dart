@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/action_button.dart';
 import '../add_patient_screen.dart';
 import '../search_screen.dart';
+import 'filtered_patients_screen.dart';
 
 class NewDashboardScreen extends StatefulWidget {
   const NewDashboardScreen({Key? key}) : super(key: key);
@@ -797,6 +798,19 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
                               count: waitingListCount,
                               color: Colors.orange,
                               icon: Icons.hourglass_full,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => FilteredPatientsScreen(
+                                      filterType: 'waitingList',
+                                      filterName: 'Список ожидания',
+                                      filterIcon: Icons.hourglass_full,
+                                      filterColor: Colors.orange,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           SizedBox(width: 16),
@@ -807,6 +821,19 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
                               count: secondStageCount,
                               color: Colors.green,
                               icon: Icons.check_circle,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => FilteredPatientsScreen(
+                                      filterType: 'secondStage',
+                                      filterName: 'Второй этап',
+                                      filterIcon: Icons.check_circle,
+                                      filterColor: Colors.green,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ],
@@ -827,6 +854,19 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
                               count: hotPatientCount,
                               color: Colors.red,
                               icon: Icons.local_fire_department,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => FilteredPatientsScreen(
+                                      filterType: 'hotPatient',
+                                      filterName: 'Горящие пациенты',
+                                      filterIcon: Icons.local_fire_department,
+                                      filterColor: Colors.red,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           // Пустое пространство справа для центрирования
@@ -850,44 +890,60 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
     required int count,
     required Color color,
     required IconData icon,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Color(0xFF202020),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1.5,
+        child: Ink(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Color(0xFF202020),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: color.withOpacity(0.3),
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: color,
+                size: 36,
+              ),
+              SizedBox(height: 16),
+              Text(
+                count.toString(),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (onTap != null) ...[
+                SizedBox(height: 12),
+                Icon(
+                  Icons.arrow_forward,
+                  color: color.withOpacity(0.7),
+                  size: 20,
+                ),
+              ],
+            ],
+          ),
         ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            color: color,
-            size: 36,
-          ),
-          SizedBox(height: 16),
-          Text(
-            count.toString(),
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
       ),
     );
   }
