@@ -84,14 +84,79 @@ class FilteredPatientsScreen extends StatelessWidget {
                 );
               }
 
+              // Определяем стиль и оформление по статусу
+              bool scheduled = patientData['scheduledByAssistant'] == true;
+              bool ambiguous = patientData['ambiguousSchedule'] == true;
+
+              Color cardColor = scheduled
+                  ? Color(0xFFB9F6CA) // насыщенно-зелёный
+                  : ambiguous
+                      ? Color(0xFFFFF3E0) // светло-оранжевый
+                      : Colors.white;
+              Color borderColor = scheduled
+                  ? Colors.green.shade700
+                  : ambiguous
+                      ? Colors.orange.shade700
+                      : filterColor.withOpacity(0.3);
+              double borderWidth = scheduled || ambiguous ? 3.0 : 1.0;
+
+              Widget? statusLabel = scheduled
+                  ? Container(
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade700,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.event_available, color: Colors.white, size: 18),
+                          SizedBox(width: 4),
+                          Text(
+                            'В расписании',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ambiguous
+                      ? Container(
+                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade700,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.warning, color: Colors.white, size: 18),
+                              SizedBox(width: 4),
+                              Text(
+                                'Требует проверки',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : null;
+
               return Card(
                 margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                elevation: 2,
+                elevation: scheduled ? 6 : ambiguous ? 4 : 2,
+                color: cardColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(
-                    color: filterColor.withOpacity(0.3),
-                    width: 1,
+                    color: borderColor,
+                    width: borderWidth,
                   ),
                 ),
                 child: InkWell(
@@ -114,19 +179,39 @@ class FilteredPatientsScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                '${patientData['surname']} ${patientData['name']}',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '${patientData['surname']} ${patientData['name']}',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: scheduled
+                                            ? Colors.green.shade900
+                                            : ambiguous
+                                                ? Colors.orange.shade900
+                                                : Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                  if (statusLabel != null) ...[
+                                    SizedBox(width: 8),
+                                    statusLabel,
+                                  ],
+                                ],
                               ),
                               SizedBox(height: 4),
                               Text(
                                 '${patientData['age']} лет | ${patientData['phone'] ?? 'Нет телефона'}',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.grey.shade600,
+                                  color: scheduled
+                                      ? Colors.green.shade900
+                                      : ambiguous
+                                          ? Colors.orange.shade900
+                                          : Colors.grey.shade600,
+                                  fontWeight: scheduled || ambiguous ? FontWeight.w600 : FontWeight.normal,
                                 ),
                               ),
                               SizedBox(height: 4),
@@ -134,7 +219,12 @@ class FilteredPatientsScreen extends StatelessWidget {
                                 patientData['city'] ?? 'Город не указан',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.grey.shade600,
+                                  color: scheduled
+                                      ? Colors.green.shade900
+                                      : ambiguous
+                                          ? Colors.orange.shade900
+                                          : Colors.grey.shade600,
+                                  fontWeight: scheduled || ambiguous ? FontWeight.w600 : FontWeight.normal,
                                 ),
                               ),
                             ],

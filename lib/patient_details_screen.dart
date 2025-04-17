@@ -265,11 +265,88 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   Widget _buildPaymentsHistory(List<Payment> payments) {
     return ExpansionTile(
       title: Text('История платежей', style: TextStyle(fontWeight: FontWeight.bold)),
+      trailing: IconButton(
+        icon: Icon(Icons.add, color: Colors.blue),
+        tooltip: 'Добавить платёж',
+        onPressed: () => _showAddPaymentDialog(context),
+      ),
       children: payments.map((payment) => ListTile(
         title: Text('${priceFormatter.format(payment.amount)} ₽'),
         subtitle: Text(DateFormat('yyyy-MM-dd').format(payment.date)),
         trailing: Icon(Icons.payment, color: Colors.green),
       )).toList(),
+    );
+  }
+
+  void _showAddPaymentDialog(BuildContext context) {
+    final amountController = TextEditingController();
+    DateTime selectedDate = DateTime.now();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Добавить платёж'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(labelText: 'Сумма'),
+                  ),
+                  SizedBox(height: 10),
+                  ListTile(
+                    title: Text('Дата: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
+                    trailing: Icon(Icons.calendar_today),
+                    onTap: () async {
+                      DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          selectedDate = picked;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  child: Text('Отмена'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                ElevatedButton(
+                  child: Text('Сохранить'),
+                  onPressed: () async {
+                    double amount = double.tryParse(amountController.text) ?? 0;
+                    if (amount > 0) {
+                      await FirebaseFirestore.instance
+                        .collection('patients')
+                        .doc(widget.patientId)
+                        .update({
+                          'payments': FieldValue.arrayUnion([
+                            {
+                              'amount': amount,
+                              'date': Timestamp.fromDate(selectedDate),
+                            }
+                          ])
+                        });
+                      Navigator.of(context).pop();
+                    }
+                  },
+                ),
+              ],
+            );
+          }
+        );
+      },
     );
   }
   Widget _buildTreatmentSchemas(String patientId) {

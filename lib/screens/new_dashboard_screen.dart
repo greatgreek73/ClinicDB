@@ -686,37 +686,155 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
   }
 
   // Верхняя правая панель
-  Widget _buildRightTopPanel(BuildContext context, {bool isPortrait = false}) {
-    return Container(
-      height: isPortrait ? 150 : null, // Фиксированная высота в портретном режиме
-      decoration: BoxDecoration(
-        color: Color(0xFF2A2A2A), // Однотонный темно-серый
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 10,
-            spreadRadius: 0,
-            offset: Offset(4, 4),
+Widget _buildRightTopPanel(BuildContext context, {bool isPortrait = false}) {
+  return StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance.collection('patients').snapshots(),
+    builder: (context, snapshot) {
+      if (!snapshot.hasData) {
+        return Container(
+          height: isPortrait ? 150 : null,
+          decoration: BoxDecoration(
+            color: Color(0xFF2A2A2A),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 10,
+                spreadRadius: 0,
+                offset: Offset(4, 4),
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1.0,
+            ),
           ),
-        ],
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 1.0,
-        ),
-      ),
-      // Добавим текст, чтобы панель была не пустой
-      child: Center(
-        child: Text(
-          'Right Panel (Top)',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: isPortrait ? 16 : 18,
+          child: Center(child: CircularProgressIndicator()),
+        );
+      }
+      int todayCount = 0;
+      DateTime now = DateTime.now();
+      List<Map<String, dynamic>> todayPayments = [];
+      for (var doc in snapshot.data!.docs) {
+        var data = doc.data() as Map<String, dynamic>;
+        var payments = data['payments'] as List<dynamic>? ?? [];
+        for (var payment in payments) {
+          DateTime paymentDate;
+          if (payment['date'] is Timestamp) {
+            paymentDate = (payment['date'] as Timestamp).toDate();
+          } else if (payment['date'] is DateTime) {
+            paymentDate = payment['date'];
+          } else {
+            continue;
+          }
+          if (paymentDate.year == now.year &&
+              paymentDate.month == now.month &&
+              paymentDate.day == now.day) {
+            todayCount++;
+            todayPayments.add({
+              'surname': data['surname'] ?? '',
+              'name': data['name'] ?? '',
+              'amount': payment['amount'] ?? payment['paid'] ?? 0,
+              'time': paymentDate,
+              'patientId': doc.id,
+            });
+            break; // Считаем пациента только один раз
+          }
+        }
+      }
+      return Container(
+        height: isPortrait ? 150 : null,
+        decoration: BoxDecoration(
+          color: Color(0xFF2A2A2A),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 10,
+              spreadRadius: 0,
+              offset: Offset(4, 4),
+            ),
+          ],
+          border: Border.all(
+            color: Colors.white.withOpacity(0.2),
+            width: 1.0,
           ),
         ),
-      ),
-    );
-  }
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.payments, color: Colors.green, size: 40),
+            SizedBox(height: 12),
+            Text(
+              'Платежей сегодня:',
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            InkWell(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) {
+                    return AlertDialog(
+                      backgroundColor: Color(0xFF232323),
+                      title: Text(
+                        'Платежи за сегодня',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      content: Container(
+                        width: 300,
+                        height: 300,
+                        child: todayPayments.isNotEmpty
+                            ? ListView.builder(
+                                itemCount: todayPayments.length,
+                                itemBuilder: (context, idx) {
+                                  final p = todayPayments[idx];
+                                  return ListTile(
+                                    dense: true,
+                                    title: Text(
+                                      '${p['surname']} ${p['name']}',
+                                      style: TextStyle(color: Colors.white, fontSize: 15),
+                                    ),
+                                    subtitle: Text(
+                                      'Сумма: ${p['amount']} ₽, Время: ${DateFormat('HH:mm').format(p['time'])}',
+                                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                                    ),
+                                    onTap: () {
+                                      // Здесь можно реализовать переход к деталям пациента, если нужно
+                                    },
+                                  );
+                                },
+                              )
+                            : Text(
+                                'Нет платежей за сегодня',
+                                style: TextStyle(color: Colors.white54),
+                              ),
+                      ),
+                      actions: [
+                        TextButton(
+                          child: Text('Закрыть', style: TextStyle(color: Colors.white)),
+                          onPressed: () => Navigator.of(ctx).pop(),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+              child: Text(
+                '$todayCount',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
   // Нижняя правая панель - Счетчики пациентов в списке ожидания и на втором этапе
   Widget _buildRightBottomPanel(BuildContext context, {bool isPortrait = false}) {
