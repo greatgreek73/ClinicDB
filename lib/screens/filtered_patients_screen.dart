@@ -85,8 +85,9 @@ class FilteredPatientsScreen extends StatelessWidget {
               }
 
               // Определяем стиль и оформление по статусу
-              bool scheduled = patientData['scheduledByAssistant'] == true;
-              bool ambiguous = patientData['ambiguousSchedule'] == true;
+              // ВРЕМЕННО: используем существующие поля для раскраски
+              bool scheduled = patientData['waitingList'] == true || patientData['hotPatient'] == true;
+              bool ambiguous = patientData['secondStage'] == true;
 
               Color cardColor = scheduled
                   ? Color(0xFFB9F6CA) // насыщенно-зелёный
