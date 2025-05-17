@@ -72,13 +72,8 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
     }
 
     final collection = FirebaseFirestore.instance.collection('treatments');
-    DateTime selectedDateWithoutTime = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
-    final existingDocumentSnapshot = await collection
-        .where('patientId', isEqualTo: widget.patientId)
-        .where('treatmentType', isEqualTo: selectedTreatment)
-        .where('date', isEqualTo: Timestamp.fromDate(selectedDateWithoutTime))
-        .limit(1)
-        .get();
+    DateTime selectedDateWithoutTime =
+        DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
 
     Map<String, dynamic> data = {
       'patientId': widget.patientId,
@@ -87,14 +82,29 @@ class _AddTreatmentScreenState extends State<AddTreatmentScreen> {
       'date': Timestamp.fromDate(selectedDateWithoutTime),
     };
 
-    if (existingDocumentSnapshot.docs.isNotEmpty) {
-      var existingDocument = existingDocumentSnapshot.docs.first;
-      var existingTeeth = List<int>.from(existingDocument.data()['toothNumber'] as List<dynamic>);
-      var updatedTeeth = {...existingTeeth.toSet(), ...selectedTeeth.toSet()}.toList();
-
-      await collection.doc(existingDocument.id).update({'toothNumber': updatedTeeth});
+    if (widget.treatmentData != null && widget.treatmentData!.containsKey('id')) {
+      await collection.doc(widget.treatmentData!['id']).update(data);
     } else {
-      await collection.add(data);
+      final existingDocumentSnapshot = await collection
+          .where('patientId', isEqualTo: widget.patientId)
+          .where('treatmentType', isEqualTo: selectedTreatment)
+          .where('date', isEqualTo: Timestamp.fromDate(selectedDateWithoutTime))
+          .limit(1)
+          .get();
+
+      if (existingDocumentSnapshot.docs.isNotEmpty) {
+        var existingDocument = existingDocumentSnapshot.docs.first;
+        var existingTeeth =
+            List<int>.from(existingDocument.data()['toothNumber'] as List<dynamic>);
+        var updatedTeeth =
+            {...existingTeeth.toSet(), ...selectedTeeth.toSet()}.toList();
+
+        await collection
+            .doc(existingDocument.id)
+            .update({'toothNumber': updatedTeeth});
+      } else {
+        await collection.add(data);
+      }
     }
 
     ScaffoldMessenger.of(context).showSnackBar(

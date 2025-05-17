@@ -112,6 +112,18 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   }
 
   @override
+  void dispose() {
+    _surnameController.dispose();
+    _ageController.dispose();
+    _priceController.dispose();
+    _paidController.dispose();
+    _nameController.dispose();
+    _cityController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     double fieldWidth = 650;
     Color labelColor = Color(0xFF151515);

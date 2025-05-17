@@ -789,7 +789,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     );
   }
 
-  Map<DateTime, List<TreatmentInfo>> _groupTreatmentsByDate(List<DocumentSnapshot> docs) {
+  Map<DateTime, List<TreatmentInfo>> _groupTreatmentsByDate(
+      List<DocumentSnapshot> docs) {
     Map<DateTime, List<TreatmentInfo>> groupedTreatments = {};
 
     for (var doc in docs) {
@@ -797,7 +798,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       var timestamp = data['date'] as Timestamp;
       var dateWithoutTime = DateTime(timestamp.toDate().year, timestamp.toDate().month, timestamp.toDate().day);
       var treatmentType = data['treatmentType'];
-      var toothNumbers = data['toothNumber'] != null ? List<int>.from(data['toothNumber']) : <int>[];
+      var toothNumbers = data['toothNumber'] != null
+          ? List<int>.from(data['toothNumber'])
+          : <int>[];
       var documentId = doc.id;
 
       if (!groupedTreatments.containsKey(dateWithoutTime)) {
@@ -814,7 +817,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       }
 
       if (!found) {
-        groupedTreatments[dateWithoutTime]!.add(TreatmentInfo(treatmentType, toothNumbers, documentId));
+        groupedTreatments[dateWithoutTime]!
+            .add(TreatmentInfo(treatmentType, toothNumbers, documentId, dateWithoutTime));
       }
     }
 
@@ -826,14 +830,16 @@ class TreatmentInfo {
   String treatmentType;
   List<int> toothNumbers;
   String? id;
+  DateTime date;
 
-  TreatmentInfo(this.treatmentType, this.toothNumbers, this.id);
+  TreatmentInfo(this.treatmentType, this.toothNumbers, this.id, this.date);
 
   Map<String, dynamic> toMap() {
     return {
       'treatmentType': treatmentType,
       'toothNumbers': toothNumbers,
-      'id': id
+      'id': id,
+      'date': Timestamp.fromDate(date),
     };
   }
 }
