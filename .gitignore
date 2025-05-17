@@ -45,3 +45,6 @@ app.*.map.json
 
 # Google Cloud credentials
 tool/service_account.json
+lib.zip
+ClinicDB-clean/
+sonnet

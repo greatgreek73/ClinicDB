@@ -82,6 +82,8 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
           .doc(widget.patientId)
           .get();
 
+      if (!mounted) return;
+
       Map<String, dynamic> patientData = patientSnapshot.data() as Map<String, dynamic>;
 
       _nameController.text = patientData['name'];
@@ -99,10 +101,12 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
       var paymentsData = patientData['payments'] as List<dynamic>? ?? [];
       _payments = paymentsData.map((p) => Payment.fromMap(p)).toList();
 
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -145,10 +149,15 @@ class _EditPatientScreenState extends State<EditPatientScreen> {
         updateData['photoUrl'] = imageUrl;
       }
 
-      await FirebaseFirestore.instance.collection('patients').doc(widget.patientId).update(updateData);
+      await FirebaseFirestore.instance
+          .collection('patients')
+          .doc(widget.patientId)
+          .update(updateData);
 
+      if (!mounted) return;
       Navigator.of(context).pop();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
