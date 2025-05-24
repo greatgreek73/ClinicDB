@@ -12,6 +12,25 @@ import 'notes_widget.dart';
 
 final priceFormatter = NumberFormat('#,###', 'ru_RU');
 
+// Define consistent card styling elements
+final BoxDecoration kDarkCardDecoration = BoxDecoration(
+  color: Color(0xFF2A2A2A),
+  borderRadius: BorderRadius.circular(12.0), 
+  border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.0),
+  boxShadow: [
+    BoxShadow(
+      color: Colors.black.withOpacity(0.5),
+      blurRadius: 10,
+      spreadRadius: 0,
+      offset: Offset(4, 4),
+    )
+  ],
+);
+
+final EdgeInsets kCardPadding = EdgeInsets.all(16.0);
+final EdgeInsets kCardMargin = EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0);
+
+
 class PatientDetailsScreen extends StatefulWidget {
   final String patientId;
 
@@ -23,9 +42,6 @@ class PatientDetailsScreen extends StatefulWidget {
 
 class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   final TextEditingController _plannedTreatmentController = TextEditingController();
-  bool _waitingList = false;
-  bool _secondStage = false;
-  bool _hotPatient = false;
 
   @override
   void initState() {
@@ -41,19 +57,27 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
           .update({field: value});
     } catch (e) {
       print('Ошибка при обновлении поля $field: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка обновления: $e'), backgroundColor: Colors.redAccent)
+        );
+      }
     }
   }
 
-  Widget _buildToggleRow(String title, bool value, Function(bool?) onChanged, TextStyle titleStyle) {
+  Widget _buildToggleRow(String title, bool currentValue, Function(bool?) onChanged, TextStyle titleStyle) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 2.0), 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(title, style: titleStyle),
-          Checkbox(
-            value: value,
+          Switch( 
+            value: currentValue,
             onChanged: onChanged,
+            activeColor: Theme.of(context).colorScheme.primary,
+            inactiveThumbColor: Colors.grey[700],
+            inactiveTrackColor: Colors.grey[800]?.withOpacity(0.5),
           ),
         ],
       ),
@@ -69,11 +93,15 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFF202020), 
       appBar: AppBar(
-        title: Text('Детали Пациента'),
+        title: Text('Детали Пациента', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: Color(0xFF2A2A2A), 
+        iconTheme: IconThemeData(color: Colors.white), 
+        elevation: 0, 
         actions: <Widget>[
           IconButton(
-            icon: Icon(Icons.edit),
+            icon: Icon(Icons.edit_outlined), // Updated Icon
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -83,7 +111,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             },
           ),
           IconButton(
-            icon: Icon(Icons.add),
+            icon: Icon(Icons.post_add_outlined), // Updated Icon
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -93,7 +121,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             },
           ),
           IconButton(
-            icon: Icon(Icons.delete),
+            icon: Icon(Icons.delete_outline), // Updated Icon
             onPressed: () => _confirmDeletion(context, widget.patientId),
           ),
         ],
@@ -101,157 +129,167 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance.collection('patients').doc(widget.patientId).snapshots(),
         builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-          if (snapshot.connectionState == ConnectionState.active) {
-            if (snapshot.hasData) {
-              var patientData = snapshot.data!.data() as Map<String, dynamic>;
-              return ListView(
-                children: <Widget>[
-                  _buildPatientInfoCard(context, patientData),
-                  _buildTreatmentSchemas(widget.patientId),
-                  _buildTreatmentsSection(widget.patientId),
-                  _buildAdditionalPhotosSection(patientData),
-                  _buildPlannedTreatmentSection(context),
-                  NotesWidget(patientId: widget.patientId),
-                ],
-              );
-            } else if (snapshot.hasError) {
-              return Text('Ошибка: ${snapshot.error}');
-            }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: Theme(data: ThemeData.dark(), child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary)));
           }
-          return Center(child: CircularProgressIndicator());
+          if (snapshot.hasError) {
+            return Center(child: Text('Ошибка: ${snapshot.error}', style: TextStyle(color: Colors.redAccent)));
+          }
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return Center(child: Text('Пациент не найден.', style: TextStyle(color: Colors.white70)));
+          }
+          
+          var patientData = snapshot.data!.data() as Map<String, dynamic>;
+          return ListView(
+            padding: EdgeInsets.symmetric(vertical: 8.0),
+            children: <Widget>[
+              _buildPatientInfoCard(context, patientData),
+              _buildSectionWrapper(child: _buildPaymentsHistory(context, patientData), title: 'История платежей'),
+              _buildTreatmentSchemas(widget.patientId), 
+              _buildSectionWrapper(child: _buildTreatmentsSection(widget.patientId), title: 'Проведенное лечение'),
+              _buildAdditionalPhotosSection(context, patientData),
+              _buildPlannedTreatmentSection(context), 
+              Padding(
+                padding: kCardMargin, 
+                child: NotesWidget(
+                  patientId: widget.patientId,
+                  backgroundColor: Color(0xFF2A2A2A), 
+                  textColor: Colors.white,
+                  buttonColor: Theme.of(context).colorScheme.primary,
+                  borderColor: Colors.white.withOpacity(0.2), 
+                  boxShadowColor: Colors.black.withOpacity(0.5), 
+                ),
+              ),
+            ],
+          );
         },
       ),
     );
   }
-  Widget _buildPatientInfoCard(BuildContext context, Map<String, dynamic> patientData) {
-    return Center(
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.5,
-        margin: EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.3),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: Offset(0, 3),
+
+  // Helper to wrap sections in styled cards
+  Widget _buildSectionWrapper({required Widget child, String? title}) {
+    return Container(
+      margin: kCardMargin,
+      decoration: kDarkCardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null) 
+            Padding(
+              padding: EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0, bottom: 8.0),
+              child: Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
             ),
+          child,
+        ],
+      )
+    );
+  }
+
+
+  Widget _buildPatientInfoCard(BuildContext context, Map<String, dynamic> patientData) {
+    return Container(
+      key: Key('patientInfoCard'), // Added Key for testing
+      margin: kCardMargin,
+      decoration: kDarkCardDecoration,
+      child: Padding(
+        padding: kCardPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildPatientPhoto(context, patientData['photoUrl']),
+            SizedBox(height: 16),
+            _buildPatientDetails(context, patientData),
           ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildPatientPhoto(patientData['photoUrl']),
-              SizedBox(height: 16),
-              _buildPatientDetails(patientData),
-            ],
-          ),
         ),
       ),
     );
   }
 
-  Widget _buildPatientPhoto(String? photoUrl) {
+  Widget _buildPatientPhoto(BuildContext context, String? photoUrl) {
     return Container(
       width: 120,
       height: 120,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.blue, width: 3),
+        border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.8), width: 3), 
+        image: photoUrl != null ? DecorationImage(image: NetworkImage(photoUrl), fit: BoxFit.cover) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.5),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: Offset(0, 3),
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.3), 
+            blurRadius: 8,
+            spreadRadius: 1,
           ),
         ],
       ),
-      child: ClipOval(
-        child: photoUrl != null
-            ? Image.network(
-                photoUrl,
-                fit: BoxFit.cover,
-              )
-            : Container(
-                color: Colors.grey[300],
-                child: Icon(Icons.person, size: 80, color: Colors.grey[600]),
+      child: photoUrl == null 
+          ? Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[800], 
               ),
-      ),
+              child: Icon(Icons.person, size: 80, color: Colors.white70),
+            )
+          : null, 
     );
   }
 
-  Widget _buildPatientDetails(Map<String, dynamic> patientData) {
+  Widget _buildPatientDetails(BuildContext context, Map<String, dynamic> patientData) {
     TextStyle nameStyle = TextStyle(
-      fontSize: 24,
+      fontSize: 26, 
       fontWeight: FontWeight.bold,
-      color: Colors.blue[800],
+      color: Colors.white, 
     );
     TextStyle ageStyle = TextStyle(
       fontSize: 20,
-      color: Colors.black87,
+      color: Colors.white.withOpacity(0.85), 
     );
     TextStyle contactStyle = TextStyle(
-      fontSize: 22,
-      color: Colors.black87,
+      fontSize: 18, 
+      color: Colors.white.withOpacity(0.85),
     );
-    TextStyle titleStyle = TextStyle(
+    TextStyle titleStyle = TextStyle( 
       fontSize: 16,
-      fontWeight: FontWeight.bold,
-      color: Colors.blue[800],
+      fontWeight: FontWeight.w600, 
+      color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.9), 
     );
-    TextStyle subtitleStyle = TextStyle(
-      fontSize: 14,
-      color: Colors.black87,
+    TextStyle subtitleStyle = TextStyle( 
+      fontSize: 16, 
+      color: Colors.white,
     );
 
     bool hadConsultation = patientData['hadConsultation'] == true;
-
     var paymentsData = patientData['payments'] as List<dynamic>? ?? [];
     List<Payment> payments = paymentsData.map((p) => Payment.fromMap(p)).toList();
     double totalPaid = payments.fold(0, (sum, payment) => sum + payment.amount);
 
+    bool waitingList = patientData['waitingList'] == true;
+    bool secondStage = patientData['secondStage'] == true;
+    bool hotPatient = patientData['hotPatient'] == true;
+
     return Column(
       children: [
         Text('${patientData['surname']} ${patientData['name']}', style: nameStyle, textAlign: TextAlign.center),
+        SizedBox(height: 4),
         Text('${patientData['age']} лет', style: ageStyle, textAlign: TextAlign.center),
-        Text('${patientData['city'] ?? 'Нет данных'} | ${patientData['phone'] ?? 'Нет данных'}', style: contactStyle, textAlign: TextAlign.center),
-        SizedBox(height: 16),
-        _buildDetailRow('Цена', '${priceFormatter.format(patientData['price'])} ₽', titleStyle, subtitleStyle),
-        _buildDetailRow('Оплачено', '${priceFormatter.format(totalPaid)} ₽', titleStyle, subtitleStyle),
-        _buildDetailRow('Осталось', '${priceFormatter.format((patientData['price'] ?? 0) - totalPaid)} ₽', titleStyle, subtitleStyle),
-        _buildDetailRow('Консультация', hadConsultation ? 'Да' : 'Нет', titleStyle, subtitleStyle),
-        _buildToggleRow('Список ожидания', patientData['waitingList'] == true, (value) {
-          setState(() {
-            _waitingList = value ?? false;
-          });
-          _updatePatientField('waitingList', value);
-        }, titleStyle),
-        _buildToggleRow('Второй этап', patientData['secondStage'] == true, (value) {
-          setState(() {
-            _secondStage = value ?? false;
-          });
-          _updatePatientField('secondStage', value);
-        }, titleStyle),
-        _buildToggleRow('Горящий пациент', patientData['hotPatient'] == true, (value) {
-          setState(() {
-            _hotPatient = value ?? false;
-          });
-          _updatePatientField('hotPatient', value);
-        }, titleStyle),
-        SizedBox(height: 16),
-        _buildPaymentsHistory(payments),
+        SizedBox(height: 8),
+        Text('${patientData['city'] ?? 'Город не указан'} | ${patientData['phone'] ?? 'Телефон не указан'}', style: contactStyle, textAlign: TextAlign.center),
+        Divider(color: Colors.white.withOpacity(0.2), height: 32),
+        _buildDetailRow('Цена:', '${priceFormatter.format(patientData['price'] ?? 0)} ₽', titleStyle, subtitleStyle),
+        _buildDetailRow('Оплачено:', '${priceFormatter.format(totalPaid)} ₽', titleStyle, subtitleStyle),
+        _buildDetailRow('Осталось:', '${priceFormatter.format((patientData['price'] ?? 0) - totalPaid)} ₽', titleStyle, subtitleStyle),
+        _buildDetailRow('Консультация:', hadConsultation ? 'Да' : 'Нет', titleStyle, subtitleStyle),
+        Divider(color: Colors.white.withOpacity(0.2), height: 32),
+        _buildToggleRow('Список ожидания', waitingList, (value) { _updatePatientField('waitingList', value); }, titleStyle),
+        _buildToggleRow('Второй этап', secondStage, (value) { _updatePatientField('secondStage', value); }, titleStyle),
+        _buildToggleRow('Горящий пациент', hotPatient, (value) { _updatePatientField('hotPatient', value); }, titleStyle),
       ],
     );
   }
 
   Widget _buildDetailRow(String title, String value, TextStyle titleStyle, TextStyle subtitleStyle) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 6.0), 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -262,18 +300,37 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     );
   }
 
-  Widget _buildPaymentsHistory(List<Payment> payments) {
+  Widget _buildPaymentsHistory(BuildContext context, Map<String, dynamic> patientData) {
+    var paymentsData = patientData['payments'] as List<dynamic>? ?? [];
+    List<Payment> payments = paymentsData.map((p) => Payment.fromMap(p)).toList();
+
     return ExpansionTile(
-      title: Text('История платежей', style: TextStyle(fontWeight: FontWeight.bold)),
-      trailing: IconButton(
-        icon: Icon(Icons.add, color: Colors.blue),
-        tooltip: 'Добавить платёж',
-        onPressed: () => _showAddPaymentDialog(context),
+      iconColor: Colors.white70,
+      collapsedIconColor: Colors.white54,
+      textColor: Colors.white,
+      collapsedTextColor: Colors.white70,
+      childrenPadding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+      // Title is now part of _buildSectionWrapper, so we adjust the content here
+      // We can use a dummy title or just the trailing IconButton for actions
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.end, // Align action button to the right
+        children: [
+          IconButton(
+            icon: Icon(Icons.add_card_outlined, color: Theme.of(context).colorScheme.primary), // Changed icon
+            tooltip: 'Добавить платёж',
+            onPressed: () => _showAddPaymentDialog(context),
+          ),
+        ],
       ),
-      children: payments.map((payment) => ListTile(
-        title: Text('${priceFormatter.format(payment.amount)} ₽'),
-        subtitle: Text(DateFormat('yyyy-MM-dd').format(payment.date)),
-        trailing: Icon(Icons.payment, color: Colors.green),
+      subtitle: payments.isEmpty ? null : Text("Всего платежей: ${payments.length}", style: TextStyle(color: Colors.white70, fontSize: 12)),
+      initiallyExpanded: false,
+      children: payments.isEmpty 
+      ? [Padding(padding: EdgeInsets.all(16.0), child: Center(child:Text("Платежей не найдено", style: TextStyle(color: Colors.white70))))]
+      : payments.map((payment) => ListTile(
+        title: Text('${priceFormatter.format(payment.amount)} ₽', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+        subtitle: Text(DateFormat('dd MMMM yyyy, HH:mm', 'ru_RU').format(payment.date), style: TextStyle(color: Colors.white70)),
+        leading: Icon(Icons.receipt_long_outlined, color: Colors.greenAccent.withOpacity(0.8)), // Changed icon
+        dense: true,
       )).toList(),
     );
   }
@@ -284,34 +341,78 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) { 
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (stfContext, setStateDialog) { 
             return AlertDialog(
-              title: Text('Добавить платёж'),
+              backgroundColor: Color(0xFF303030), 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0), side: BorderSide(color: Colors.white.withOpacity(0.2))),
+              title: Text('Добавить платёж', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              contentTextStyle: TextStyle(color: Colors.white70),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: amountController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(labelText: 'Сумма'),
+                    style: TextStyle(color: Colors.white),
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'Сумма', 
+                      labelStyle: TextStyle(color: Colors.white70),
+                      prefixText: "₽ ",
+                      prefixStyle: TextStyle(color: Colors.white70),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white38), borderRadius: BorderRadius.circular(8)),
+                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Theme.of(context).colorScheme.primary), borderRadius: BorderRadius.circular(8)),
+                    ),
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 16),
                   ListTile(
-                    title: Text('Дата: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
-                    trailing: Icon(Icons.calendar_today),
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Дата: ${DateFormat('dd.MM.yyyy HH:mm').format(selectedDate)}', style: TextStyle(color: Colors.white)),
+                    trailing: Icon(Icons.calendar_today_outlined, color: Colors.white70),
                     onTap: () async {
-                      DateTime? picked = await showDatePicker(
-                        context: context,
+                      DateTime? pickedDate = await showDatePicker(
+                        context: dialogContext, 
                         initialDate: selectedDate,
                         firstDate: DateTime(2000),
-                        lastDate: DateTime.now(),
+                        lastDate: DateTime.now().add(Duration(days: 365)), 
+                        builder: (pickerContext, child) {
+                          return Theme(
+                            data: ThemeData.dark().copyWith(
+                              colorScheme: ColorScheme.dark(
+                                primary: Theme.of(context).colorScheme.primary,
+                                onPrimary: Colors.white,
+                                surface: Color(0xFF303030),
+                                onSurface: Colors.white,
+                              ),
+                              dialogBackgroundColor: Color(0xFF303030),
+                              textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.primary))
+                            ),
+                            child: child!,
+                          );
+                        },
                       );
-                      if (picked != null) {
-                        setState(() {
-                          selectedDate = picked;
-                        });
+                      if (pickedDate != null) {
+                         TimeOfDay? pickedTime = await showTimePicker(
+                            context: dialogContext,
+                            initialTime: TimeOfDay.fromDateTime(selectedDate),
+                             builder: (pickerContext, child) {
+                              return Theme(
+                                data: ThemeData.dark().copyWith(
+                                  colorScheme: ColorScheme.dark(
+                                    primary: Theme.of(context).colorScheme.primary,
+                                    onPrimary: Colors.white,
+                                    surface: Color(0xFF303030),
+                                    onSurface: Colors.white,
+                                  ),
+                                  dialogBackgroundColor: Color(0xFF303030),
+                                ), child: child!);
+                             });
+                        if (pickedTime != null) {
+                           setStateDialog(() { 
+                            selectedDate = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+                          });
+                        }
                       }
                     },
                   ),
@@ -319,26 +420,26 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
               ),
               actions: [
                 TextButton(
-                  child: Text('Отмена'),
-                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Отмена', style: TextStyle(color: Colors.white70)),
+                  onPressed: () => Navigator.of(dialogContext).pop(), 
                 ),
                 ElevatedButton(
                   child: Text('Сохранить'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                   onPressed: () async {
-                    double amount = double.tryParse(amountController.text) ?? 0;
+                    double amount = double.tryParse(amountController.text.replaceAll(',', '.')) ?? 0;
                     if (amount > 0) {
                       await FirebaseFirestore.instance
                         .collection('patients')
                         .doc(widget.patientId)
                         .update({
                           'payments': FieldValue.arrayUnion([
-                            {
-                              'amount': amount,
-                              'date': Timestamp.fromDate(selectedDate),
-                            }
+                            Payment(amount: amount, date: selectedDate).toMap()
                           ])
                         });
-                      Navigator.of(context).pop();
+                      Navigator.of(dialogContext).pop(); 
+                    } else {
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text("Сумма должна быть больше нуля."), backgroundColor: Colors.orangeAccent));
                     }
                   },
                 ),
@@ -349,40 +450,48 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       },
     );
   }
+
   Widget _buildTreatmentSchemas(String patientId) {
     return FutureBuilder<Map<String, int>>(
       future: _getTreatmentCounts(patientId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return Center(child: Theme(data: ThemeData.dark(), child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary)));
         }
         if (snapshot.hasError) {
-          return Text('Ошибка: ${snapshot.error}');
+          return Padding(padding: kCardPadding, child: Text('Ошибка загрузки схем: ${snapshot.error}', style: TextStyle(color: Colors.redAccent)));
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Text('Нет данных о лечении');
+          return _buildSectionWrapper(
+            title: "Схемы лечения",
+            child: Padding(padding: kCardPadding, child: Center(child:Text('Нет данных о схемах лечения', style: TextStyle(color: Colors.white70)))),
+          );
         }
 
         var sortedTreatments = snapshot.data!.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
-        var topFourTreatments = sortedTreatments.take(4).toList();
-
-        return Column(
-          children: [
-            Row(
-              children: [
-                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[0].key, _getColor(topFourTreatments[0].key))),
-                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[1].key, _getColor(topFourTreatments[1].key))),
-              ],
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[2].key, _getColor(topFourTreatments[2].key))),
-                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[3].key, _getColor(topFourTreatments[3].key))),
-              ],
-            ),
-          ],
+        
+        List<Widget> schemaRows = [];
+        for (int i = 0; i < sortedTreatments.length; i += 2) {
+          Widget rowChild1 = Expanded(child: _buildTreatmentSchema(patientId, sortedTreatments[i].key, _getColor(sortedTreatments[i].key)));
+          Widget rowChild2 = (i + 1 < sortedTreatments.length) 
+                            ? Expanded(child: _buildTreatmentSchema(patientId, sortedTreatments[i+1].key, _getColor(sortedTreatments[i+1].key)))
+                            : Expanded(child: SizedBox.shrink()); 
+          schemaRows.add(Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0), 
+            child: Row(children: [rowChild1, SizedBox(width: 8), rowChild2]),
+          ));
+          if (i + 2 < sortedTreatments.length) { 
+             schemaRows.add(SizedBox(height: 8));
+          }
+        }
+        
+        return _buildSectionWrapper(
+          title: "Схемы лечения",
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 16.0, top: 8.0), 
+            child: Column(children: schemaRows),
+          )
         );
       },
     );
@@ -397,43 +506,50 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Text('Ошибка загрузки данных о лечении: ${snapshot.error}');
+          return Padding(padding:kCardPadding, child: Text('Ошибка: ${snapshot.error}', style: TextStyle(color: Colors.redAccent)));
         }
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return Container(height: 150, child: Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary.withOpacity(0.5))));
         }
 
         List<int> treatedTeeth = [];
         snapshot.data!.docs.forEach((doc) {
           var data = doc.data() as Map<String, dynamic>;
-          treatedTeeth.addAll(List<int>.from(data['toothNumber']));
+          if (data['toothNumber'] is List) { 
+            treatedTeeth.addAll(List<int>.from(data['toothNumber']));
+          }
         });
 
+        Color textColorOnTreatment = color.computeLuminance() > 0.4 ? Colors.black87 : Colors.white;
+
         return Card(
+          color: Color(0xFF333333), 
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0), side: BorderSide(color: Colors.white.withOpacity(0.15))),
+          elevation: 2,
           child: Padding(
-            padding: EdgeInsets.all(8),
+            padding: EdgeInsets.all(12.0),
             child: Column(
               children: [
                 Container(
                   width: double.infinity,
-                  padding: EdgeInsets.symmetric(vertical: 8),
+                  padding: EdgeInsets.symmetric(vertical: 6.0),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(4),
+                    color: color.withOpacity(0.25), 
+                    borderRadius: BorderRadius.circular(6.0),
                   ),
                   child: Text(
                     treatmentType,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: color,
+                      color: color, 
                     ),
                     textAlign: TextAlign.center,
                   ),
                 ),
-                SizedBox(height: 10),
+                SizedBox(height: 12),
                 SizedBox(
-                  height: 100,
+                  height: 100, 
                   child: GridView.builder(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 16,
@@ -442,19 +558,21 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                       mainAxisSpacing: 2,
                     ),
                     itemCount: 32,
+                    physics: NeverScrollableScrollPhysics(), 
                     itemBuilder: (context, index) {
                       int toothNumber = _getToothNumber(index);
                       bool isTreated = treatedTeeth.contains(toothNumber);
                       return Container(
                         decoration: BoxDecoration(
-                          color: isTreated ? color : Colors.grey[300],
+                          color: isTreated ? color : Colors.white.withOpacity(0.1), 
                           shape: BoxShape.circle,
+                           border: isTreated ? null : Border.all(color: Colors.white.withOpacity(0.2), width: 0.5)
                         ),
                         child: Center(
                           child: Text(
                             toothNumber.toString(),
                             style: TextStyle(
-                              color: isTreated ? Colors.white : Colors.black,
+                              color: isTreated ? textColorOnTreatment : Colors.white70, 
                               fontSize: 8,
                               fontWeight: FontWeight.bold,
                             ),
@@ -474,19 +592,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
 
   Future<Map<String, int>> _getTreatmentCounts(String patientId) async {
     var treatmentCounts = <String, int>{
-      'Кариес': 0,
-      'Имплантация': 0,
-      'Удаление': 0,
-      'Сканирование': 0,
-      'Эндо': 0,
-      'Формирователь': 0,
-      'PMMA': 0,
-      'Коронка': 0,
-      'Абатмент': 0,
-      'Сдача PMMA': 0,
-      'Сдача коронка': 0,
-      'Сдача абатмент': 0,
-      'Удаление импланта': 0
+      'Кариес': 0, 'Имплантация': 0, 'Удаление': 0, 'Сканирование': 0,
+      'Эндо': 0, 'Формирователь': 0, 'PMMA': 0, 'Коронка': 0, 'Абатмент': 0,
+      'Сдача PMMA': 0, 'Сдача коронка': 0, 'Сдача абатмент': 0, 'Удаление импланта': 0
     };
 
     var snapshot = await FirebaseFirestore.instance
@@ -505,39 +613,31 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         print('Неизвестный тип лечения: $treatmentType');
       }
     }
-
+    treatmentCounts.removeWhere((key, value) => value == 0);
     return treatmentCounts;
   }
 
-  Color _getColor(String treatmentType) {
+  Color _getColor(String treatmentType) { 
     final colors = {
-      'Кариес': Colors.red,
-      'Имплантация': Colors.blue,
-      'Удаление': Colors.orange,
-      'Сканирование': Colors.purple,
-      'Эндо': Colors.green,
-      'Формирователь': Colors.teal,
-      'PMMA': Colors.amber,
-      'Коронка': Colors.indigo,
-      'Абатмент': Colors.pink,
-      'Сдача PMMA': Colors.cyan,
-      'Сдача коронка': Colors.deepPurple,
-      'Сдача абатмент': Colors.lightGreen,
-      'Удаление импланта': Colors.deepOrange,
+      'Кариес': Colors.red.shade400, 'Имплантация': Colors.blue.shade400,
+      'Удаление': Colors.orange.shade400, 'Сканирование': Colors.purple.shade400,
+      'Эндо': Colors.green.shade400,'Формирователь': Colors.teal.shade400,
+      'PMMA': Colors.amber.shade600, 'Коронка': Colors.indigo.shade400,
+      'Абатмент': Colors.pink.shade300, 'Сдача PMMA': Colors.cyan.shade400,
+      'Сдача коронка': Colors.deepPurple.shade400, 'Сдача абатмент': Colors.lightGreen.shade500,
+      'Удаление импланта': Colors.deepOrange.shade400,
     };
-
-    return colors[treatmentType] ?? Colors.grey;
+    return colors[treatmentType] ?? Colors.grey.shade500; 
   }
 
   int _getToothNumber(int index) {
-  if (index < 16) {
-    // Верхний ряд: 18 17 16 15 14 13 12 11 21 22 23 24 25 26 27 28
-    return index < 8 ? 18 - index : 21 + (index - 8);
-  } else {
-    // Нижний ряд: 48 47 46 45 44 43 42 41 31 32 33 34 35 36 37 38
-    return index < 24 ? 48 - (index - 16) : 31 + (index - 24);
+    if (index < 16) {
+      return index < 8 ? 18 - index : 21 + (index - 8);
+    } else {
+      return index < 24 ? 48 - (index - 16) : 31 + (index - 24);
+    }
   }
-}
+
   Widget _buildTreatmentsSection(String patientId) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -547,112 +647,193 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
           .snapshots(),
       builder: (context, treatmentSnapshot) {
         if (treatmentSnapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return Center(child: Theme(data: ThemeData.dark(), child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary)));
         }
-
         if (treatmentSnapshot.hasError) {
-          print('Error in _buildTreatmentsSection: ${treatmentSnapshot.error}');
-          print('Error stack trace: ${treatmentSnapshot.stackTrace}');
-          return Text('Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}');
+          return Padding(padding: kCardPadding, child: Text('Ошибка: ${treatmentSnapshot.error}', style: TextStyle(color: Colors.redAccent)));
         }
-
         if (!treatmentSnapshot.hasData || treatmentSnapshot.data!.docs.isEmpty) {
-          return Text('Нет данных о лечении');
+          return Padding(
+            padding: kCardPadding,
+            child: Center(child:Text('Нет данных о лечении', style: TextStyle(color: Colors.white70))),
+          );
         }
 
         var treatments = _groupTreatmentsByDate(treatmentSnapshot.data!.docs);
 
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: treatments.keys.length,
-          itemBuilder: (context, index) {
-            DateTime date = treatments.keys.elementAt(index);
-            var treatmentInfos = treatments[date]!;
-            return ExpansionTile(
-              title: Text(DateFormat('yyyy-MM-dd').format(date)),
-              children: treatmentInfos.map((treatmentInfo) {
-                return ListTile(
-                  title: Text(treatmentInfo.treatmentType),
-                  subtitle: Text('Зубы: ${treatmentInfo.toothNumbers.join(", ")}'),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => AddTreatmentScreen(patientId: patientId, treatmentData: treatmentInfo.toMap()),
+        return ExpansionTileTheme( 
+          data: ExpansionTileThemeData(
+            iconColor: Colors.white70,
+            collapsedIconColor: Colors.white54,
+            textColor: Colors.white,
+            collapsedTextColor: Colors.white70,
+          ),
+          child: ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: treatments.keys.length,
+            itemBuilder: (context, index) {
+              DateTime date = treatments.keys.elementAt(index);
+              var treatmentInfos = treatments[date]!;
+              return ExpansionTile(
+                 title: Text(
+                    DateFormat('dd MMMM yyyy', 'ru_RU').format(date) + 
+                    " (${treatmentInfos.length} ${treatmentInfos.length == 1 ? 'запись' : (treatmentInfos.length < 5 ? 'записи' : 'записей')})",
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)
+                ),
+                childrenPadding: EdgeInsets.only(bottom: 8.0, left: 8.0, right: 8.0),
+                children: treatmentInfos.map((treatmentInfo) {
+                  return Card( // Wrap ListTile in a Card for better separation
+                    color: Colors.white.withOpacity(0.05),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                    margin: EdgeInsets.symmetric(vertical: 4.0),
+                    child: ListTile(
+                      title: Text(treatmentInfo.treatmentType, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                      subtitle: Text('Зубы: ${treatmentInfo.toothNumbers.join(", ")}', style: TextStyle(color: Colors.white70)),
+                      leading: Icon(_getIconForTreatment(treatmentInfo.treatmentType), color: _getColor(treatmentInfo.treatmentType).withOpacity(0.8), size: 28),
+                      trailing: Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white38),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => AddTreatmentScreen(patientId: patientId, treatmentData: treatmentInfo.toMap()),
+                        ),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0), // Adjusted padding
+                      dense: true,
                     ),
-                  ),
-                );
-              }).toList(),
-            );
-          },
+                  );
+                }).toList(),
+              );
+            },
+          ),
         );
       },
     );
   }
 
-  Widget _buildAdditionalPhotosSection(Map<String, dynamic> patientData) {
+  IconData _getIconForTreatment(String treatmentType) {
+    switch (treatmentType) {
+      case 'Кариес': return Icons.coronavirus_outlined; 
+      case 'Имплантация': return Icons.settings_system_daydream_outlined; 
+      case 'Удаление': return Icons.delete_sweep_outlined; 
+      case 'Сканирование': return Icons.qr_code_scanner_outlined;
+      case 'Эндо': return Icons.healing_outlined; 
+      case 'Формирователь': return Icons.trip_origin_outlined; 
+      case 'PMMA': return Icons.layers_outlined; 
+      case 'Коронка': return Icons.star_outline; 
+      case 'Абатмент': return Icons.widgets_outlined;
+      case 'Сдача PMMA': return Icons.check_circle_outline;
+      case 'Сдача коронка': return Icons.verified_outlined;
+      case 'Сдача абатмент': return Icons.done_all_outlined;
+      case 'Удаление импланта': return Icons.remove_circle_outline;
+      default: return Icons.medical_services_outlined;
+    }
+  }
+
+
+  Widget _buildAdditionalPhotosSection(BuildContext context, Map<String, dynamic> patientData) {
     List<dynamic> additionalPhotos = patientData['additionalPhotos'] ?? [];
     
-    return Card(
-      margin: EdgeInsets.all(8),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Дополнительные фото', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ElevatedButton(
-                  onPressed: _addAdditionalPhoto,
-                  child: Text('Добавить'),
+    return Container(
+      margin: kCardMargin,
+      padding: kCardPadding,
+      decoration: kDarkCardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Дополнительные фото', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              ElevatedButton.icon(
+                icon: Icon(Icons.add_a_photo_outlined, size: 18),
+                label: Text('Добавить'),
+                onPressed: () => _addAdditionalPhoto(context), 
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.8), 
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    textStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
                 ),
-              ],
-            ),
-            SizedBox(height: 16),
-            if (additionalPhotos.isEmpty)
-              Text('Нет дополнительных фотографий')
-            else
-              GridView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                ),
-                itemCount: additionalPhotos.length,
-                itemBuilder: (context, index) {
-                  var photo = additionalPhotos[index];
-                  return GestureDetector(
-                    onTap: () => _showImageDialog(photo),
-                    child: Image.network(
-                      photo['url'],
-                      fit: BoxFit.cover,
-                    ),
-                  );
-                },
               ),
-          ],
-        ),
+            ],
+          ),
+          SizedBox(height: 16),
+          if (additionalPhotos.isEmpty)
+            Center(child: Text('Нет дополнительных фотографий', style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic)))
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 3, 
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: additionalPhotos.length,
+              itemBuilder: (context, index) {
+                var photo = additionalPhotos[index];
+                return GestureDetector(
+                  onTap: () => _showImageDialog(context, photo as Map<String,dynamic>), 
+                  child: ClipRRect( 
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: Container(
+                      decoration: BoxDecoration(border: Border.all(color: Colors.white.withOpacity(0.1), width: 1)),
+                      child: Image.network(
+                        photo['url'],
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(child: CircularProgressIndicator(value: loadingProgress.expectedTotalBytes != null ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes! : null, color: Theme.of(context).colorScheme.primary.withOpacity(0.5)));
+                        },
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: Colors.grey[850], child: Icon(Icons.broken_image_outlined, color: Colors.white38, size: 40)
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
       ),
     );
   }
 
-  void _showImageDialog(Map<String, dynamic> photo) {
+  void _showImageDialog(BuildContext context, Map<String, dynamic> photo) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return Dialog(
+          backgroundColor: Color(0xFF303030).withOpacity(0.95),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0), side: BorderSide(color: Colors.white.withOpacity(0.2))),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Image.network(photo['url']),
-              Padding(
-                padding: EdgeInsets.all(8),
-                child: Text(photo['description']),
+              ClipRRect(
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(12.0), topRight: Radius.circular(12.0)),
+                child: Image.network(
+                  photo['url'], 
+                  fit: BoxFit.contain, 
+                  errorBuilder: (context, error, stackTrace) => Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Icon(Icons.broken_image_outlined, size: 100, color: Colors.white70),
+                  )
+                ),
               ),
-              Text(DateFormat('yyyy-MM-dd').format((photo['dateAdded'] as Timestamp).toDate())),
+              Padding(
+                padding: EdgeInsets.all(12.0),
+                child: Text(photo['description'] ?? 'Нет описания', style: TextStyle(color: Colors.white, fontSize: 16), textAlign: TextAlign.center),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12.0, right: 12.0),
+                child: Text(
+                  photo['dateAdded'] != null ? DateFormat('dd.MM.yyyy HH:mm', 'ru_RU').format((photo['dateAdded'] as Timestamp).toDate()) : 'Нет даты', 
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                  textAlign: TextAlign.right,
+                ),
+              ),
             ],
           ),
         );
@@ -660,13 +841,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     );
   }
 
-  Future<void> _addAdditionalPhoto() async {
+  Future<void> _addAdditionalPhoto(BuildContext context) async {
     final ImagePicker _picker = ImagePicker();
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80); 
     
     if (image != null) {
       File imageFile = File(image.path);
-      String fileName = 'additional_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      String fileName = 'additional_${DateTime.now().millisecondsSinceEpoch}.${image.name.split('.').last}'; 
       
       try {
         TaskSnapshot uploadTask = await FirebaseStorage.instance
@@ -675,63 +856,122 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         
         String imageUrl = await uploadTask.ref.getDownloadURL();
         
+        String? description = await _showDescriptionDialog(context);
+
         await FirebaseFirestore.instance.collection('patients').doc(widget.patientId).update({
           'additionalPhotos': FieldValue.arrayUnion([
             {
               'url': imageUrl,
-              'description': 'Дополнительное фото',
+              'description': description ?? 'Дополнительное фото', 
               'dateAdded': Timestamp.now(),
             }
           ]),
         });
-        
-        setState(() {});
       } catch (e) {
         print('Error uploading additional photo: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка загрузки фото: $e'), backgroundColor: Colors.redAccent)
+          );
+        }
       }
     }
   }
 
+  Future<String?> _showDescriptionDialog(BuildContext context) async {
+    TextEditingController descriptionController = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: Color(0xFF303030),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0), side: BorderSide(color: Colors.white.withOpacity(0.2))),
+          title: Text('Описание фото', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: TextField(
+            controller: descriptionController,
+            style: TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Введите описание...',
+              hintStyle: TextStyle(color: Colors.white70),
+              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white38), borderRadius: BorderRadius.circular(8)),
+              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Theme.of(context).colorScheme.primary), borderRadius: BorderRadius.circular(8)),
+            ),
+            maxLines: 3,
+            autofocus: true,
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Отмена', style: TextStyle(color: Colors.white70)),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            ElevatedButton(
+              child: Text('Сохранить'),
+              style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(descriptionController.text.trim());
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
   Widget _buildPlannedTreatmentSection(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(10),
-      margin: EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.5),
-            spreadRadius: 5,
-            blurRadius: 7,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
+      margin: kCardMargin,
+      padding: kCardPadding,
+      decoration: kDarkCardDecoration,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Планируемое лечение:', style: TextStyle(fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
+          Text('Планируемое лечение:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          SizedBox(height: 12),
           TextField(
             controller: _plannedTreatmentController,
-            decoration: InputDecoration(border: OutlineInputBorder()),
-            readOnly: true,
-            maxLines: null,
+            style: TextStyle(color: Colors.white, fontSize: 15, height: 1.4), 
+            decoration: InputDecoration(
+              hintText: "Записи о планируемом лечении...",
+              hintStyle: TextStyle(color: Colors.white54),
+              fillColor: Colors.white.withOpacity(0.05),
+              filled: true,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.white38)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Colors.white38.withOpacity(0.5))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+            readOnly: true, 
+            maxLines: null, 
+            minLines: 3,   
           ),
-          SizedBox(height: 10),
+          SizedBox(height: 12),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisAlignment: MainAxisAlignment.end, 
             children: [
-              ElevatedButton(
-                onPressed: () => _navigateAndDisplaySelection(context),
-                child: Text('Добавить'),
-              ),
-              ElevatedButton(
+              TextButton.icon( 
+                icon: Icon(Icons.clear_all_outlined, size: 18),
+                label: Text('Очистить'),
                 onPressed: () {
                   _plannedTreatmentController.clear();
                   _savePlannedTreatment('');
                 },
-                child: Text('Очистить'),
+                style: TextButton.styleFrom(foregroundColor: Colors.white70, textStyle: TextStyle(fontSize: 14)),
+              ),
+              SizedBox(width: 8),
+              ElevatedButton.icon(
+                icon: Icon(Icons.add_circle_outline_outlined, size: 18),
+                label: Text('Добавить'),
+                onPressed: () => _navigateAndDisplaySelection(context),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.8), 
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    textStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
+                ),
               ),
             ],
           ),
@@ -743,11 +983,16 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   void _navigateAndDisplaySelection(BuildContext context) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => TreatmentSelectionScreen()),
+      MaterialPageRoute(builder: (context) => TreatmentSelectionScreen()), 
     );
 
-    if (result != null) {
-      _plannedTreatmentController.text += (result + '\n');
+    if (result != null && result is String && result.isNotEmpty) {
+      String currentText = _plannedTreatmentController.text;
+      if (currentText.isNotEmpty && !currentText.endsWith('\n')) {
+        _plannedTreatmentController.text += '\n' + result;
+      } else {
+         _plannedTreatmentController.text += result;
+      }
       await _savePlannedTreatment(_plannedTreatmentController.text);
     }
   }
@@ -760,26 +1005,41 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   Future<void> _loadPlannedTreatment() async {
     final prefs = await SharedPreferences.getInstance();
     String treatment = prefs.getString('planned_treatment_${widget.patientId}') ?? '';
-    _plannedTreatmentController.text = treatment;
+    if (mounted) { 
+      _plannedTreatmentController.text = treatment;
+    }
   }
 
   void _confirmDeletion(BuildContext context, String patientId) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: Text('Удалить пациента'),
-          content: Text('Вы уверены, что хотите удалить этого пациента?'),
+          backgroundColor: Color(0xFF303030),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0), side: BorderSide(color: Colors.white.withOpacity(0.2))),
+          title: Text('Удалить пациента', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: Text('Вы уверены, что хотите удалить этого пациента? Это действие необратимо.', style: TextStyle(color: Colors.white70)),
           actions: <Widget>[
             TextButton(
-              child: Text('Отмена'),
-              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Отмена', style: TextStyle(color: Colors.white70)),
+              onPressed: () => Navigator.of(dialogContext).pop(),
             ),
-            TextButton(
+            ElevatedButton( 
               child: Text('Удалить'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent.shade200, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
               onPressed: () {
                 FirebaseFirestore.instance.collection('patients').doc(patientId).delete().then((_) {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  Navigator.of(dialogContext).pop(); 
+                  if (mounted) { 
+                    Navigator.of(context).popUntil((route) => route.isFirst); 
+                  }
+                }).catchError((error) {
+                   Navigator.of(dialogContext).pop();
+                   if (mounted) {
+                     ScaffoldMessenger.of(context).showSnackBar(
+                       SnackBar(content: Text('Ошибка удаления: $error'), backgroundColor: Colors.redAccent)
+                     );
+                   }
                 });
               },
             ),
@@ -795,10 +1055,14 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
 
     for (var doc in docs) {
       var data = doc.data() as Map<String, dynamic>;
-      var timestamp = data['date'] as Timestamp;
+      var timestamp = data['date'] as Timestamp?; 
+      if (timestamp == null) continue; 
+
       var dateWithoutTime = DateTime(timestamp.toDate().year, timestamp.toDate().month, timestamp.toDate().day);
-      var treatmentType = data['treatmentType'];
-      var toothNumbers = data['toothNumber'] != null
+      var treatmentType = data['treatmentType'] as String?; 
+      if (treatmentType == null) continue; 
+
+      var toothNumbers = data['toothNumber'] != null && data['toothNumber'] is List
           ? List<int>.from(data['toothNumber'])
           : <int>[];
       var documentId = doc.id;
@@ -821,8 +1085,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             .add(TreatmentInfo(treatmentType, toothNumbers, documentId, dateWithoutTime));
       }
     }
-
-    return groupedTreatments;
+    var sortedKeys = groupedTreatments.keys.toList()..sort((a,b) => b.compareTo(a));
+    Map<DateTime, List<TreatmentInfo>> sortedGroupedTreatments = {};
+    for (var key in sortedKeys) {
+      sortedGroupedTreatments[key] = groupedTreatments[key]!;
+    }
+    return sortedGroupedTreatments;
   }
 }
 
@@ -849,19 +1117,33 @@ class TreatmentSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     List<String> treatments = [
       '1 сегмент', '2 сегмент', '3 сегмент', '4 сегмент',
-      'Имплантация', 'Коронки', 'Лечение', 'Удаление'
+      'Имплантация', 'Коронки', 'Лечение', 'Удаление',
+      'Консультация', 'Осмотр', 'Снятие швов', 'Профгигиена', 'Другое' 
     ];
 
     return Scaffold(
-      appBar: AppBar(title: Text('Выбор лечения')),
+      backgroundColor: Color(0xFF202020), 
+      appBar: AppBar(
+        title: Text('Выбор лечения', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: Color(0xFF2A2A2A), 
+        iconTheme: IconThemeData(color: Colors.white),
+        elevation: 0,
+      ),
       body: ListView.builder(
+        padding: EdgeInsets.symmetric(vertical: 8.0),
         itemCount: treatments.length,
         itemBuilder: (context, index) {
-          return ListTile(
-            title: Text(treatments[index]),
-            onTap: () {
-              Navigator.pop(context, treatments[index]);
-            },
+          return Card(
+            color: Color(0xFF2A2A2A),
+            margin: EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0), side: BorderSide(color: Colors.white.withOpacity(0.15))),
+            child: ListTile(
+              title: Text(treatments[index], style: TextStyle(color: Colors.white)),
+              trailing: Icon(Icons.add_circle_outline_outlined, color: Theme.of(context).colorScheme.primary.withOpacity(0.7)),
+              onTap: () {
+                Navigator.pop(context, treatments[index]);
+              },
+            ),
           );
         },
       ),
