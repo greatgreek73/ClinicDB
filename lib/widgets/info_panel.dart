@@ -108,7 +108,7 @@ class _InfoPanelState extends State<InfoPanel> {
               style: TextStyle(
                 fontSize: 48,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.lightTextColor,
+                color: AppTheme.darkPrimaryTextColor,
               ),
             ),
             SizedBox(width: 5),
@@ -116,7 +116,7 @@ class _InfoPanelState extends State<InfoPanel> {
               unit,
               style: TextStyle(
                 fontSize: 14,
-                color: AppTheme.lightTextColor.withOpacity(0.7),
+                color: AppTheme.darkPrimaryTextColor.withOpacity(0.7),
               ),
             ),
           ],
@@ -125,7 +125,7 @@ class _InfoPanelState extends State<InfoPanel> {
           description,
           style: TextStyle(
             fontSize: 14,
-            color: AppTheme.lightTextColor.withOpacity(0.7),
+            color: AppTheme.darkPrimaryTextColor.withOpacity(0.7),
           ),
         ),
       ],
@@ -142,7 +142,7 @@ class _InfoPanelState extends State<InfoPanel> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            color: AppTheme.lightTextColor,
+            color: AppTheme.darkPrimaryTextColor,
           ),
         ),
         SizedBox(height: 4),
@@ -150,7 +150,7 @@ class _InfoPanelState extends State<InfoPanel> {
           DateFormat('EEEE').format(DateTime.now()),
           style: TextStyle(
             fontSize: 12,
-            color: AppTheme.lightTextColor.withOpacity(0.7),
+            color: AppTheme.darkPrimaryTextColor.withOpacity(0.7),
           ),
         ),
       ],

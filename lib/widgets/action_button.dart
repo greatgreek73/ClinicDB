@@ -23,7 +23,7 @@ class ActionButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTheme.largeRadius),
         gradient: useGradient ? AppTheme.primaryGradient : null,
         color: useGradient ? null : AppTheme.primaryColor,
-        boxShadow: AppTheme.cardShadow,
+        boxShadow: AppTheme.cardShadowDark,
       ),
       child: Material(
         color: Colors.transparent,
@@ -37,14 +37,14 @@ class ActionButton extends StatelessWidget {
               children: [
                 Icon(
                   icon,
-                  color: AppTheme.lightTextColor,
+                  color: AppTheme.darkPrimaryTextColor,
                   size: 24,
                 ),
                 SizedBox(width: 12),
                 Text(
                   title,
                   style: TextStyle(
-                    color: AppTheme.lightTextColor,
+                    color: AppTheme.darkPrimaryTextColor,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
