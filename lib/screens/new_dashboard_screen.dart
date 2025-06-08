@@ -6,6 +6,7 @@ import '../widgets/action_button.dart';
 import '../add_patient_screen.dart';
 import '../search_screen.dart';
 import 'filtered_patients_screen.dart';
+import '../widgets/creature_widget.dart';
 
 class NewDashboardScreen extends StatefulWidget {
   const NewDashboardScreen({Key? key}) : super(key: key);
@@ -639,15 +640,9 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
           width: 1.0,
         ),
       ),
-      // Добавим текст, чтобы панель была не пустой
-      child: Center(
-        child: Text(
-          'Main Panel (Top)',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: isPortrait ? 16 : 18,
-          ),
-        ),
+      // Отображаем динамическое "существо"
+      child: const Center(
+        child: CreatureWidget(),
       ),
     );
   }
