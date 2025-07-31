@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart'; // Import for date formatting
-import '../theme/app_theme.dart';
-import '../widgets/action_button.dart';
+import 'package:intl/intl.dart';
 import '../add_patient_screen.dart';
 import '../search_screen.dart';
-import 'filtered_patients_screen.dart';
+import '../theme/app_theme.dart';
+// Riverpod-представление (данные приходят из контроллера)
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../presentation/dashboard/widgets/patient_counts_widget.dart';
+import '../../../presentation/dashboard/widgets/treatment_stats_widget.dart';
 
 class NewDashboardScreen extends StatefulWidget {
   const NewDashboardScreen({Key? key}) : super(key: key);
@@ -619,52 +620,24 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
     );
   }
 
-  // Верхняя основная панель
+  // Верхняя основная панель (теперь отображает статистику по процедурам)
   Widget _buildMainTopPanel(BuildContext context, {bool isPortrait = false}) {
-    return Container(
-      height: isPortrait ? 200 : null, // Фиксированная высота в портретном режиме
-      decoration: BoxDecoration(
-        color: Color(0xFF2A2A2A), // Однотонный темно-серый
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 10,
-            spreadRadius: 0,
-            offset: Offset(4, 4),
-          ),
-        ],
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 1.0,
-        ),
-      ),
-      // Добавим текст, чтобы панель была не пустой
-      child: Center(
-        child: Text(
-          'Main Panel (Top)',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: isPortrait ? 16 : 18,
-          ),
-        ),
-      ),
-    );
+    return TreatmentStatsWidget(isPortrait: isPortrait);
   }
 
-  // Нижняя основная панель
+  // Нижняя основная панель (сейчас оставим как заглушку-контейнер)
   Widget _buildMainBottomPanel(BuildContext context, {bool isPortrait = false}) {
     return Container(
-      height: isPortrait ? 150 : null, // Фиксированная высота в портретном режиме
+      height: isPortrait ? 150 : null,
       decoration: BoxDecoration(
-        color: Color(0xFF2A2A2A), // Однотонный темно-серый
+        color: const Color(0xFF2A2A2A),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.5),
             blurRadius: 10,
             spreadRadius: 0,
-            offset: Offset(4, 4),
+            offset: const Offset(4, 4),
           ),
         ],
         border: Border.all(
@@ -672,14 +645,10 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
           width: 1.0,
         ),
       ),
-      // Добавим текст, чтобы панель была не пустой
-      child: Center(
+      child: const Center(
         child: Text(
           'Main Panel (Bottom)',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: isPortrait ? 16 : 18,
-          ),
+          style: TextStyle(color: Colors.white70, fontSize: 18),
         ),
       ),
     );
@@ -718,20 +687,20 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
     );
   }
 
-  // Нижняя правая панель - Счетчики пациентов в списке ожидания и на втором этапе
+  // Нижняя правая панель — теперь на Riverpod-данных
   Widget _buildRightBottomPanel(BuildContext context, {bool isPortrait = false}) {
     return Container(
-      height: isPortrait ? 180 : null, // Фиксированная высота в портретном режиме
-      padding: EdgeInsets.all(16),
+      height: isPortrait ? 180 : null,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Color(0xFF2A2A2A), // Однотонный темно-серый
+        color: const Color(0xFF2A2A2A),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.5),
             blurRadius: 10,
             spreadRadius: 0,
-            offset: Offset(4, 4),
+            offset: const Offset(4, 4),
           ),
         ],
         border: Border.all(
@@ -739,212 +708,7 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
           width: 1.0,
         ),
       ),
-      child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('patients').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-          
-          if (snapshot.hasError) {
-            return Center(child: Text('Ошибка при загрузке данных', style: TextStyle(color: Colors.white)));
-          }
-          
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(child: Text('Нет данных', style: TextStyle(color: Colors.white)));
-          }
-          
-          // Подсчет пациентов по категориям
-          int waitingListCount = 0;
-          int secondStageCount = 0;
-          int hotPatientCount = 0;
-          
-          for (var doc in snapshot.data!.docs) {
-            var data = doc.data() as Map<String, dynamic>;
-            if (data['waitingList'] == true) {
-              waitingListCount++;
-            }
-            if (data['secondStage'] == true) {
-              secondStageCount++;
-            }
-            if (data['hotPatient'] == true) {
-              hotPatientCount++;
-            }
-          }
-          
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Статистика пациентов',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 20),
-              Expanded(
-                child: Column(
-                  children: [
-                    // Верхний ряд с двумя карточками
-                    Expanded(
-                      child: Row(
-                        children: [
-                          // Блок "Список ожидания"
-                          Expanded(
-                            child: _buildPatientCategoryCard(
-                              title: 'Список ожидания',
-                              count: waitingListCount,
-                              color: Colors.orange,
-                              icon: Icons.hourglass_full,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => FilteredPatientsScreen(
-                                      filterType: 'waitingList',
-                                      filterName: 'Список ожидания',
-                                      filterIcon: Icons.hourglass_full,
-                                      filterColor: Colors.orange,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          // Блок "Второй этап"
-                          Expanded(
-                            child: _buildPatientCategoryCard(
-                              title: 'Второй этап',
-                              count: secondStageCount,
-                              color: Colors.green,
-                              icon: Icons.check_circle,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => FilteredPatientsScreen(
-                                      filterType: 'secondStage',
-                                      filterName: 'Второй этап',
-                                      filterIcon: Icons.check_circle,
-                                      filterColor: Colors.green,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    // Нижний ряд с карточкой "Горящие пациенты"
-                    Expanded(
-                      child: Row(
-                        children: [
-                          // Пустое пространство слева для центрирования
-                          Expanded(flex: 1, child: SizedBox()),
-                          // Блок "Горящие пациенты"
-                          Expanded(
-                            flex: 2,
-                            child: _buildPatientCategoryCard(
-                              title: 'Горящие пациенты',
-                              count: hotPatientCount,
-                              color: Colors.red,
-                              icon: Icons.local_fire_department,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => FilteredPatientsScreen(
-                                      filterType: 'hotPatient',
-                                      filterName: 'Горящие пациенты',
-                                      filterIcon: Icons.local_fire_department,
-                                      filterColor: Colors.red,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          // Пустое пространство справа для центрирования
-                          Expanded(flex: 1, child: SizedBox()),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-  
-  // Виджет карточки для отображения категории пациентов с количеством
-  Widget _buildPatientCategoryCard({
-    required String title,
-    required int count,
-    required Color color,
-    required IconData icon,
-    VoidCallback? onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Ink(
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Color(0xFF202020),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: color.withOpacity(0.3),
-              width: 1.5,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: color,
-                size: 36,
-              ),
-              SizedBox(height: 16),
-              Text(
-                count.toString(),
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              if (onTap != null) ...[
-                SizedBox(height: 12),
-                Icon(
-                  Icons.arrow_forward,
-                  color: color.withOpacity(0.7),
-                  size: 20,
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+      child: const PatientCountsWidget(),
     );
   }
 

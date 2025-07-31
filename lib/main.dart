@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'add_patient_screen.dart';
 import 'search_screen.dart';
 import 'package:flutter/services.dart';
@@ -11,10 +12,13 @@ import 'package:intl/intl.dart';
 import 'specific_patients_screen.dart';
 import 'theme/app_theme.dart';
 import 'screens/new_dashboard_screen.dart';
+import 'package:go_router/go_router.dart';
+import 'routing/app_router.dart';
+import 'utils/logger.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  print('WidgetsFlutterBinding initialized');
+  Logger.i('WidgetsFlutterBinding initialized');
 
   if (!kIsWeb) {
     // Включаем полноэкранный режим (скрываем строку состояния и навигационную панель)
@@ -30,30 +34,44 @@ void main() async {
       statusBarIconBrightness: Brightness.light,
     ));
   }
-  print('SystemChrome set');
+  Logger.i('SystemChrome set');
 
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    print('Firebase initialized');
-  } catch (e) {
-    print('Error initializing Firebase: $e');
+    // Проверяем платформу перед инициализацией Firebase
+    if (kIsWeb || (defaultTargetPlatform == TargetPlatform.android)) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      Logger.i('Firebase initialized');
+    } else if (defaultTargetPlatform == TargetPlatform.windows) {
+      Logger.w('Firebase not configured for Windows. Running without Firebase.');
+      // Для Windows пока пропускаем инициализацию Firebase
+    } else {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      Logger.i('Firebase initialized');
+    }
+  } catch (e, st) {
+    Logger.e('Error initializing Firebase', e, st);
+    Logger.w('Continuing without Firebase...');
   }
 
-  runApp(ClinicDBApp());
-  print('ClinicDBApp started');
+  runApp(const ProviderScope(child: ClinicDBApp()));
+  Logger.i('ClinicDBApp started');
 }
 
 class ClinicDBApp extends StatelessWidget {
+  const ClinicDBApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    print('Building ClinicDBApp');
-    return MaterialApp(
+    Logger.d('Building ClinicDBApp');
+    return MaterialApp.router(
       title: 'clinicdb',
       theme: AppTheme.themeData,
       debugShowCheckedModeBanner: false, // Скрыть баннер debug режима
-      home: NewDashboardScreen(),
+      routerConfig: appRouter,
     );
   }
 }
@@ -81,7 +99,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    print('Building LoginPage');
+    Logger.d('Building LoginPage');
     double buttonWidth = 350;
     double buttonHeight = 60;
     double buttonFontSize = 18;
@@ -105,13 +123,13 @@ class _LoginPageState extends State<LoginPage> {
                   alignment: WrapAlignment.center,
                   children: <Widget>[
                     _buildButton(context, 'Добавить Пациента', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => AddPatientScreen()));
+                      context.push('/add');
                     }, buttonWidth, buttonHeight, buttonFontSize),
                     _buildButton(context, 'Поиск', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => SearchScreen()));
+                      context.push('/search');
                     }, buttonWidth, buttonHeight, buttonFontSize),
                     _buildButton(context, 'Отчеты', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsScreen()));
+                      context.push('/reports');
                     }, buttonWidth, buttonHeight, buttonFontSize),
                     _buildButton(context, 'Специфические пациенты ($specificPatientsCount)', () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => SpecificPatientsScreen()));

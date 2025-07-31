@@ -9,20 +9,63 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
-linter:
-  # The lint rules applied to this project can be customized in the
-  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
-  # included above or to enable additional rules. A list of all available lints
-  # and their documentation is published at https://dart.dev/lints.
-  #
-  # Instead of disabling a lint rule for the entire project in the
-  # section below, it can also be suppressed for a single line of code
-  # or a specific dart file by using the `// ignore: name_of_lint` and
-  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
-  # producing the lint.
-  rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+analyzer:
+  language:
+    strict-casts: true
+    strict-raw-types: true
+    strict-inference: true
+  errors:
+    # Трактуем как ошибки то, что чаще всего приводит к багам.
+    dead_code: error
+    unused_import: error
+    unused_local_variable: error
+    missing_return: error
+    always_declare_return_types: error
+    invalid_assignment: error
+    implicit_dynamic_parameter: error
+    implicit_dynamic_variable: error
+    implicit_dynamic_type: error
 
-# Additional information about this file can be found at
+linter:
+  rules:
+    # Строгая декларация типов/читаемость
+    always_declare_return_types: true
+    always_put_required_named_parameters_first: true
+    always_specify_types: false
+    prefer_final_locals: true
+    prefer_final_in_for_each: true
+    unnecessary_lambdas: true
+    avoid_redundant_argument_values: true
+    unnecessary_parenthesis: true
+
+    # Стиль кода / кавычки / импорты
+    prefer_single_quotes: true
+    directives_ordering: true
+    sort_child_properties_last: true
+    specify_non_nullable_return_types: true
+
+    # Безопасность/ошибки
+    avoid_print: true
+    use_build_context_synchronously: true
+    cancel_subscriptions: true
+    close_sinks: true
+    no_leading_underscores_for_local_identifiers: true
+
+    # Коллекции/итерации
+    avoid_function_literals_in_foreach_calls: true
+    prefer_foreach: false
+    avoid_unnecessary_containers: true
+
+    # Константы/конструкторы
+    prefer_const_constructors: true
+    prefer_const_literals_to_create_immutables: true
+    unnecessary_const: true
+    unnecessary_new: true
+
+    # Нул-безопасность и проверка условий
+    prefer_is_empty: true
+    prefer_null_aware_method_calls: true
+    null_check_on_nullable_type_parameter: true
+
+# Доп. справка
 # https://dart.dev/guides/language/analysis-options
