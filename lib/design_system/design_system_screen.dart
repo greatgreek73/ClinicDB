@@ -177,6 +177,56 @@ class NeoButton extends StatelessWidget {
   }
 }
 
+/// Неоморфное текстовое поле
+class NeoTextField extends StatelessWidget {
+  final String label;
+  final TextEditingController? controller;
+  final TextInputType keyboardType;
+  final int maxLines;
+  final String? hintText;
+  final bool obscureText;
+
+  const NeoTextField({
+    super.key,
+    required this.label,
+    this.controller,
+    this.keyboardType = TextInputType.text,
+    this.maxLines = 1,
+    this.hintText,
+    this.obscureText = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return NeoCard.inset(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: DesignTokens.small.copyWith(color: DesignTokens.textSecondary)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: controller,
+              keyboardType: keyboardType,
+              maxLines: maxLines,
+              obscureText: obscureText,
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: hintText,
+                hintStyle: DesignTokens.body.copyWith(color: DesignTokens.textMuted),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+              ),
+              style: DesignTokens.body.copyWith(color: DesignTokens.textPrimary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class NeoAvatar extends StatelessWidget {
   final double size;
   final bool online;

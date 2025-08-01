@@ -7,6 +7,7 @@ import 'patient_details_screen.dart';
 import 'package:flutter_masked_text2/flutter_masked_text2.dart';
 import 'package:intl/intl.dart';
 import 'payment.dart';
+import 'design_system/design_system_screen.dart' show NeoCard, NeoButton, NeoTextField, DesignTokens;
 
 class AddPatientScreen extends StatefulWidget {
   @override
@@ -113,51 +114,142 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double fieldWidth = 650;
-    Color labelColor = Color(0xFF151515);
+    const double formWidth = 700;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Добавить Пациента', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.black,
+        title: const Text('Добавить пациента'),
       ),
-      backgroundColor: Colors.white,
       body: Center(
-        child: Container(
-          width: 670,
-          height: double.infinity,
-          decoration: ShapeDecoration(
-            color: Color(0xFFF1F1F1),
-            shape: RoundedRectangleBorder(
-              side: BorderSide(width: 1, color: Color(0xFF5A5959)),
-              borderRadius: BorderRadius.circular(20),
-            ),
-          ),
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  _buildFieldWithPadding(_buildTextFormField(_surnameController, 'Фамилия', labelColor), fieldWidth),
-                  _buildFieldWithPadding(_buildTextFormField(_ageController, 'Возраст', labelColor, isNumber: true), fieldWidth),
-                  _buildFieldWithPadding(_buildPriceFormField(_priceController, 'Цена', labelColor), fieldWidth),
-                  _buildFieldWithPadding(_buildTextFormField(_nameController, 'Имя', labelColor), fieldWidth),
-                  _buildFieldWithPadding(_buildTextFormField(_cityController, 'Город', labelColor), fieldWidth),
-                  _buildFieldWithPadding(_buildPhoneFormField(labelColor), fieldWidth),
-                  SizedBox(height: 40),
-                  _buildGenderRow(Color(0xFF0F5BF1)),
-                  SizedBox(height: 40),
-                  _buildImageSection(),
-                  SizedBox(height: 40),
-                  _buildConsultationCheckbox(),
-                  SizedBox(height: 20),
-                  _buildFieldWithPadding(_buildPriceFormField(_paidController, 'Первый платеж', labelColor), fieldWidth),
-                  _buildDatePicker(),
-                  SizedBox(height: 20),
-                  _buildSaveButton(),
-                ],
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: formWidth),
+          child: Padding(
+            padding: const EdgeInsets.all(DesignTokens.s20),
+            child: NeoCard(
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // Заголовок формы
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Карточка пациента',
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                      ),
+                      const SizedBox(height: DesignTokens.s20),
+
+                      // ФИО/Возраст/Город/Телефон
+                      _section(
+                        context,
+                        title: 'Основная информация',
+                        child: Column(
+                          children: [
+                            NeoTextField(
+                              label: 'Фамилия',
+                              controller: _surnameController,
+                              hintText: 'Введите фамилию',
+                            ),
+                            const SizedBox(height: DesignTokens.s10),
+                            NeoTextField(
+                              label: 'Имя',
+                              controller: _nameController,
+                              hintText: 'Введите имя',
+                            ),
+                            const SizedBox(height: DesignTokens.s10),
+                            NeoTextField(
+                              label: 'Возраст',
+                              controller: _ageController,
+                              keyboardType: TextInputType.number,
+                              hintText: 'Например: 34',
+                            ),
+                            const SizedBox(height: DesignTokens.s10),
+                            NeoTextField(
+                              label: 'Город',
+                              controller: _cityController,
+                              hintText: 'Введите город',
+                            ),
+                            const SizedBox(height: DesignTokens.s10),
+                            NeoTextField(
+                              label: 'Телефон',
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              hintText: '(000) 000-00-00',
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: DesignTokens.s20),
+
+                      // Пол и Фото
+                      _section(
+                        context,
+                        title: 'Дополнительно',
+                        child: Column(
+                          children: [
+                            _genderSelector(context),
+                            const SizedBox(height: DesignTokens.s15),
+                            _imageSection(context),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: DesignTokens.s20),
+
+                      // Стоимость и платеж
+                      _section(
+                        context,
+                        title: 'Финансы',
+                        child: Column(
+                          children: [
+                            NeoTextField(
+                              label: 'Цена',
+                              controller: _priceController,
+                              keyboardType: TextInputType.number,
+                              hintText: 'Сумма лечения',
+                            ),
+                            const SizedBox(height: DesignTokens.s10),
+                            NeoTextField(
+                              label: 'Первый платеж',
+                              controller: _paidController,
+                              keyboardType: TextInputType.number,
+                              hintText: 'Внесённая сумма',
+                            ),
+                            const SizedBox(height: DesignTokens.s10),
+                            _datePicker(context),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: DesignTokens.s20),
+
+                      // Флаг консультации
+                      _section(
+                        context,
+                        title: 'Статус',
+                        child: _consultationCheckbox(context),
+                      ),
+
+                      const SizedBox(height: DesignTokens.s20),
+
+                      // Кнопка сохранения
+                      Row(
+                        children: [
+                          Expanded(
+                            child: NeoButton(
+                              label: 'Сохранить',
+                              primary: true,
+                              onPressed: _addPatientToFirestore,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -166,156 +258,135 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     );
   }
 
-  Widget _buildFieldWithPadding(Widget field, double width) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10.0),
-      child: SizedBox(width: width, child: field),
+  // Раздел формы с заголовком внутри NeoCard
+  Widget _section(BuildContext context, {required String title, required Widget child}) {
+    return Column(
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+        ),
+        const SizedBox(height: DesignTokens.s10),
+        NeoCard.inset(child: Padding(padding: const EdgeInsets.all(12), child: child)),
+      ],
     );
   }
 
-  Widget _buildTextFormField(TextEditingController controller, String label, Color labelColor, {bool isNumber = false}) {
-    return TextFormField(
-      controller: controller,
-      style: TextStyle(color: Colors.black),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: labelColor),
-        enabledBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey),
-        ),
-        focusedBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.white),
-        ),
-        border: UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey),
-        ),
-      ),
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Пожалуйста, введите $label';
-        }
-        if (isNumber && label == 'Возраст') {
-          int? age = int.tryParse(value);
-          if (age == null || age < 0 || age > 120) {
-            return 'Пожалуйста, введите корректный возраст (0-120)';
-          }
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildPriceFormField(MoneyMaskedTextController controller, String label, Color labelColor) {
-    return _buildTextFormField(controller, label, labelColor, isNumber: true);
-  }
-
-  Widget _buildPhoneFormField(Color labelColor) {
-    return _buildTextFormField(_phoneController, 'Телефон', labelColor);
-  }
-
-  Widget _buildGenderRow(Color customColor) {
+  Widget _genderSelector(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        GestureDetector(
-          onTap: () => setState(() => _isMale = true),
-          child: Container(
-            padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
-            decoration: BoxDecoration(
-              color: _isMale ? customColor : Colors.grey,
-              borderRadius: BorderRadius.circular(10),
+      children: [
+        Expanded(
+          child: NeoCard.inset(
+            child: InkWell(
+              onTap: () => setState(() => _isMale = true),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Center(
+                  child: Text(
+                    'Мужской',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: _isMale ? DesignTokens.accentPrimary : DesignTokens.textSecondary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ),
             ),
-            child: Text('Мужской', style: TextStyle(color: Colors.white)),
           ),
         ),
-        SizedBox(width: 20),
-        GestureDetector(
-          onTap: () => setState(() => _isMale = false),
-          child: Container(
-            padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
-            decoration: BoxDecoration(
-              color: !_isMale ? customColor : Colors.grey,
-              borderRadius: BorderRadius.circular(10),
+        const SizedBox(width: DesignTokens.s10),
+        Expanded(
+          child: NeoCard.inset(
+            child: InkWell(
+              onTap: () => setState(() => _isMale = false),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Center(
+                  child: Text(
+                    'Женский',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: !_isMale ? DesignTokens.accentPrimary : DesignTokens.textSecondary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ),
             ),
-            child: Text('Женский', style: TextStyle(color: Colors.white)),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildImageSection() {
+  Widget _imageSection(BuildContext context) {
     return Column(
       children: [
         if (_image != null)
-          SizedBox(
-            width: 80,
-            height: 80,
-            child: Image.file(_image!, fit: BoxFit.cover),
+          NeoCard.inset(
+            child: SizedBox(
+              width: 100,
+              height: 100,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(_image!, fit: BoxFit.cover),
+              ),
+            ),
           ),
-        ElevatedButton(
-          onPressed: _pickImage,
-          child: Text('Выбрать фотографию', style: TextStyle(color: Colors.white)),
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+        const SizedBox(height: DesignTokens.s10),
+        Row(
+          children: [
+            Expanded(
+              child: NeoButton(
+                label: 'Выбрать фотографию',
+                onPressed: _pickImage,
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildConsultationCheckbox() {
+  Widget _consultationCheckbox(BuildContext context) {
     return Row(
       children: [
-        Checkbox(
-          value: _hadConsultation,
-          onChanged: (bool? value) {
-            setState(() {
-              _hadConsultation = value ?? false;
-            });
-          },
+        NeoCard.inset(
+          child: Checkbox(
+            value: _hadConsultation,
+            onChanged: (bool? value) {
+              setState(() {
+                _hadConsultation = value ?? false;
+              });
+            },
+          ),
         ),
-        Text('Был на консультации'),
+        const SizedBox(width: 8),
+        Text('Был на консультации', style: Theme.of(context).textTheme.bodyLarge),
       ],
     );
   }
 
-  Widget _buildDatePicker() {
-    return ListTile(
-      title: Text("Дата платежа"),
-      subtitle: Text("${DateFormat('yyyy-MM-dd').format(_paymentDate)}"),
-      trailing: Icon(Icons.calendar_today),
-      onTap: () async {
-        DateTime? picked = await showDatePicker(
-          context: context,
-          initialDate: _paymentDate,
-          firstDate: DateTime(2000),
-          lastDate: DateTime.now(),
-        );
-        if (picked != null) {
-          setState(() {
-            _paymentDate = picked;
-          });
-        }
-      },
-    );
-  }
-
-  Widget _buildSaveButton() {
-    double buttonWidth = 350;
-    double buttonHeight = 60;
-    double buttonFontSize = 18;
-
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Color(0xFF0F5BF1),
-        foregroundColor: Colors.white,
-        shadowColor: Color(0x40000000),
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        fixedSize: Size(buttonWidth, buttonHeight),
+  Widget _datePicker(BuildContext context) {
+    return NeoCard.inset(
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        title: const Text("Дата платежа"),
+        subtitle: Text(DateFormat('yyyy-MM-dd').format(_paymentDate)),
+        trailing: const Icon(Icons.calendar_today),
+        onTap: () async {
+          DateTime? picked = await showDatePicker(
+            context: context,
+            initialDate: _paymentDate,
+            firstDate: DateTime(2000),
+            lastDate: DateTime.now(),
+          );
+          if (picked != null) {
+            setState(() {
+              _paymentDate = picked;
+            });
+          }
+        },
       ),
-      onPressed: _addPatientToFirestore,
-      child: Text('Сохранить', style: TextStyle(fontSize: buttonFontSize)),
     );
   }
 }
