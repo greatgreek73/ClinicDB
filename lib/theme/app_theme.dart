@@ -1,165 +1,74 @@
 import 'package:flutter/material.dart';
+import '../design_system/design_system_screen.dart' show DesignTokens;
 
 class AppTheme {
-  // Основные цвета приложения
-  static const Color primaryColor = Color(0xFF0F5BF1); // Основной синий цвет
-  static const Color secondaryColor = Color(0xFF003479); // Темно-синий
-  static const Color accentColor = Color(0xFF00A3FF); // Светло-синий акцент
-  static const Color backgroundColor = Colors.white;
-  static const Color cardColor = Color(0xFFF1F1F1);
-  static const Color darkTextColor = Color(0xFF151515);
-  static const Color lightTextColor = Colors.white;
-  static const Color errorColor = Color(0xFFE53935);
-  static const Color successColor = Color(0xFF43A047);
-
-  // Градиенты
-  static const LinearGradient primaryGradient = LinearGradient(
-    colors: [primaryColor, secondaryColor],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const LinearGradient accentGradient = LinearGradient(
-    colors: [accentColor, primaryColor],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  // Скругления
-  static const double smallRadius = 6.0;
-  static const double mediumRadius = 12.0;
-  static const double largeRadius = 20.0;
-  static const double extraLargeRadius = 30.0;
-
-  // Тени
-  static List<BoxShadow> cardShadow = [
-    BoxShadow(
-      color: Colors.black.withOpacity(0.1),
-      spreadRadius: 1,
-      blurRadius: 10,
-      offset: Offset(0, 3),
-    ),
-  ];
-
-  static List<BoxShadow> elevatedShadow = [
-    BoxShadow(
-      color: Colors.black.withOpacity(0.2),
-      spreadRadius: 1,
-      blurRadius: 15,
-      offset: Offset(0, 5),
-    ),
-  ];
-
-  // Отступы
-  static const double defaultPadding = 16.0;
-  static const double smallPadding = 8.0;
-  static const double largePadding = 24.0;
-
-  // Основная тема приложения
+  // Глобальная светлая неоморфная тема, синхронизированная с DesignTokens
   static ThemeData themeData = ThemeData(
-    primaryColor: primaryColor,
-    scaffoldBackgroundColor: backgroundColor,
-    fontFamily: 'Roboto', // Можно заменить на другой шрифт
+    brightness: Brightness.light,
+    useMaterial3: true,
 
-    // AppBar тема
-    appBarTheme: AppBarTheme(
-      backgroundColor: Colors.black,
+    // Базовые цвета
+    scaffoldBackgroundColor: DesignTokens.background,
+    primaryColor: DesignTokens.accentPrimary,
+    cardColor: DesignTokens.surface,
+    splashColor: Colors.transparent,
+    highlightColor: Colors.transparent,
+
+    // Типографика
+    textTheme: const TextTheme(
+      headlineLarge: DesignTokens.h1,
+      headlineMedium: DesignTokens.h2,
+      headlineSmall: DesignTokens.h3,
+      titleLarge: DesignTokens.h4,
+      bodyLarge: DesignTokens.body,
+      bodyMedium: DesignTokens.small,
+    ),
+
+    // AppBar в светлом стиле
+    appBarTheme: const AppBarTheme(
+      backgroundColor: DesignTokens.background,
       elevation: 0,
       centerTitle: false,
       titleTextStyle: TextStyle(
-        color: lightTextColor,
+        color: DesignTokens.textPrimary,
         fontSize: 20,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w700,
       ),
-      iconTheme: IconThemeData(color: lightTextColor),
+      iconTheme: IconThemeData(color: DesignTokens.textPrimary),
     ),
 
-    // Тема текста
-    textTheme: TextTheme(
-      headlineLarge: TextStyle(
-        fontSize: 28, 
-        fontWeight: FontWeight.bold, 
-        color: darkTextColor
-      ),
-      headlineMedium: TextStyle(
-        fontSize: 24, 
-        fontWeight: FontWeight.bold, 
-        color: darkTextColor
-      ),
-      headlineSmall: TextStyle(
-        fontSize: 20, 
-        fontWeight: FontWeight.bold, 
-        color: darkTextColor
-      ),
-      titleLarge: TextStyle(
-        fontSize: 18, 
-        fontWeight: FontWeight.w600, 
-        color: darkTextColor
-      ),
-      titleMedium: TextStyle(
-        fontSize: 16, 
-        fontWeight: FontWeight.w600, 
-        color: darkTextColor
-      ),
-      bodyLarge: TextStyle(
-        fontSize: 16, 
-        color: darkTextColor
-      ),
-      bodyMedium: TextStyle(
-        fontSize: 14, 
-        color: darkTextColor
+    // Карточки по умолчанию — светлые, без «материал» тени (тени рисуются нашими нео-компонентами)
+    cardTheme: CardTheme(
+      color: DesignTokens.surface, // светлый фон карточек
+      elevation: 0, // убираем материал-тени, используем нео-тени в NeoCard
+      margin: const EdgeInsets.all(8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(DesignTokens.cornerRadiusCard),
       ),
     ),
 
-    // Тема кнопок
+    // Кнопки — по умолчанию светлые, первичная — градиент задаётся нашим NeoButton
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: primaryColor,
+        backgroundColor: DesignTokens.accentPrimary,
         foregroundColor: Colors.white,
-        elevation: 2,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(smallRadius),
+          borderRadius: BorderRadius.circular(DesignTokens.cornerRadiusButton),
         ),
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        textStyle: const TextStyle(fontWeight: FontWeight.w600),
       ),
     ),
 
-    // Тема карточек
-    cardTheme: CardTheme(
-      color: cardColor,
-      elevation: 5,
-      margin: EdgeInsets.all(8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(mediumRadius),
-      ),
-    ),
-  );
-
-  // Стиль для главных кнопок действий
-  static ButtonStyle actionButtonStyle = ElevatedButton.styleFrom(
-    backgroundColor: primaryColor,
-    foregroundColor: Colors.white,
-    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-    textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-    elevation: 3,
-  );
-
-  // Стиль для карточек информации
-  static BoxDecoration infoCardDecoration = BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(largeRadius),
-    boxShadow: cardShadow,
-  );
-
-  // Стиль для панели навигации
-  static BoxDecoration navPanelDecoration = BoxDecoration(
-    color: Colors.black.withOpacity(0.8),
-    borderRadius: BorderRadius.only(
-      topLeft: Radius.circular(extraLargeRadius),
-      bottomLeft: Radius.circular(extraLargeRadius),
+    // Цветовая схема (минимальная синхронизация)
+    colorScheme: ColorScheme.light(
+      primary: DesignTokens.accentPrimary,
+      secondary: DesignTokens.accentSecondary,
+      surface: DesignTokens.surface,
+      error: DesignTokens.error,
+      onPrimary: Colors.white,
+      onSurface: DesignTokens.textPrimary,
     ),
   );
 }

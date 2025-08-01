@@ -6,6 +6,7 @@ import '../add_patient_screen.dart';
 import '../search_screen.dart';
 import '../reports_screen.dart';
 import '../patient_details_screen.dart';
+import '../design_system/design_system_screen.dart';
 
 /// Определение всех route names для типобезопасного использования.
 abstract class AppRoutes {
@@ -22,12 +23,17 @@ abstract class AppRoutes {
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   routes: [
+    // Витрина дизайн‑системы (отдельный корневой маршрут)
+    GoRoute(
+      path: '/design-system',
+      builder: (context, state) => const DesignSystemScreen(),
+    ),
+    // Корневой раздел с вложенными маршрутами
     GoRoute(
       name: AppRoutes.root,
       path: '/',
       builder: (context, state) => const NewDashboardScreen(),
       routes: [
-        // /patient/:id — экран деталей пациента
         GoRoute(
           name: AppRoutes.patient,
           path: 'patient/:id',
@@ -36,28 +42,21 @@ final GoRouter appRouter = GoRouter(
             return PatientDetailsScreen(patientId: id ?? '');
           },
         ),
-        // /dashboard/:id — пример вложенного роутинга для будущей детализации
         GoRoute(
           name: AppRoutes.dashboard,
           path: 'dashboard/:id',
-          builder: (context, state) {
-            // Пока можно отобразить тот же экран, а позже заменить на детальный
-            return const NewDashboardScreen();
-          },
+          builder: (context, state) => const NewDashboardScreen(),
         ),
-        // /add — экран добавления пациента
         GoRoute(
           name: AppRoutes.addPatient,
           path: 'add',
           builder: (context, state) => AddPatientScreen(),
         ),
-        // /search — экран поиска
         GoRoute(
           name: AppRoutes.search,
           path: 'search',
           builder: (context, state) => SearchScreen(),
         ),
-        // /reports — отчёты
         GoRoute(
           name: AppRoutes.reports,
           path: 'reports',

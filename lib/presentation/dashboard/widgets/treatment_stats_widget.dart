@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../design_system/design_system_screen.dart' show NeoCard, DesignTokens;
 import '../../dashboard/dashboard_controller.dart';
 
 /// Отображает агрегаты процедур:
@@ -20,64 +22,86 @@ class TreatmentStatsWidget extends ConsumerWidget {
       required Key monthKey,
       required Key yearKey,
     }) {
-      return Container(
-        height: isPortrait ? 150 : null,
-        decoration: BoxDecoration(
-          color: const Color(0xFF2A2A2A),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.5),
-              blurRadius: 10,
-              spreadRadius: 0,
-              offset: const Offset(4, 4),
+      return NeoCard(
+        child: month.when(
+          loading: () => const Center(
+            child: SizedBox(
+              height: 22,
+              width: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
             ),
-          ],
-          border: Border.all(
-            color: Colors.white.withOpacity(0.2),
-            width: 1.0,
           ),
-        ),
-        child: Center(
-          child: month.when(
-            loading: () => const CircularProgressIndicator(),
-            error: (e, _) => Text(
+          error: (e, _) => Center(
+            child: Text(
               '$title: ошибка',
-              style: const TextStyle(color: Colors.white70),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: DesignTokens.textSecondary,
+                  ),
             ),
-            data: (m) => year.when(
-              loading: () => const CircularProgressIndicator(),
-              error: (e, _) => Text(
-                '$title: ошибка',
-                style: const TextStyle(color: Colors.white70),
+          ),
+          data: (m) => year.when(
+            loading: () => const Center(
+              child: SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
-              data: (y) => Column(
-                mainAxisSize: MainAxisSize.min,
+            ),
+            error: (e, _) => Center(
+              child: Text(
+                '$title: ошибка',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: DesignTokens.textSecondary,
+                    ),
+              ),
+            ),
+            data: (y) => SizedBox(
+              height: isPortrait ? 150 : null,
+              child: Row(
                 children: [
-                  Text(
-                    '$title',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: isPortrait ? 14 : 16,
-                      fontWeight: FontWeight.bold,
+                  // Левая колонка: заголовок
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Агрегированные значения по зубам',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: DesignTokens.textSecondary,
+                              ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '$m',
-                    key: monthKey,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isPortrait ? 20 : 24,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$y',
-                    key: yearKey,
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: isPortrait ? 16 : 18,
+                  const SizedBox(width: 12),
+                  // Правая колонка: месяц и год
+                  Expanded(
+                    flex: 3,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _StatBox(
+                            label: 'Месяц',
+                            value: m,
+                            valueKey: monthKey,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StatBox(
+                            label: 'Год',
+                            value: y,
+                            valueKey: yearKey,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -90,7 +114,6 @@ class TreatmentStatsWidget extends ConsumerWidget {
 
     return Column(
       children: [
-        // Импланты (верхняя панель)
         buildPanel(
           title: 'Импланты (зубы)',
           month: state.implantsMonthCount,
@@ -98,8 +121,7 @@ class TreatmentStatsWidget extends ConsumerWidget {
           monthKey: const ValueKey('implantsMonth'),
           yearKey: const ValueKey('implantsYear'),
         ),
-        const SizedBox(height: 16),
-        // Коронка + Абатмент (нижняя панель)
+        const SizedBox(height: 12),
         buildPanel(
           title: 'Коронка + Абатмент (зубы)',
           month: state.crownAbutmentMonthCount,
@@ -108,6 +130,47 @@ class TreatmentStatsWidget extends ConsumerWidget {
           yearKey: const ValueKey('crownAbYear'),
         ),
       ],
+    );
+  }
+}
+
+class _StatBox extends StatelessWidget {
+  final String label;
+  final int value;
+  final Key valueKey;
+
+  const _StatBox({
+    required this.label,
+    required this.value,
+    required this.valueKey,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return NeoCard.inset(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: DesignTokens.textSecondary,
+                  ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '$value',
+              key: valueKey,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: DesignTokens.textPrimary,
+                  ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

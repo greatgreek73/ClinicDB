@@ -69,7 +69,7 @@ class ClinicDBApp extends StatelessWidget {
     Logger.d('Building ClinicDBApp');
     return MaterialApp.router(
       title: 'clinicdb',
-      theme: AppTheme.themeData,
+      theme: AppTheme.themeData, // подключена светлая неоморфная тема
       debugShowCheckedModeBanner: false, // Скрыть баннер debug режима
       routerConfig: appRouter,
     );

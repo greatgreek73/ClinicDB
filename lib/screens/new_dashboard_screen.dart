@@ -3,10 +3,13 @@ import 'package:intl/intl.dart';
 import '../add_patient_screen.dart';
 import '../search_screen.dart';
 import '../theme/app_theme.dart';
+import 'package:go_router/go_router.dart';
 // Riverpod-представление (данные приходят из контроллера)
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../presentation/dashboard/widgets/patient_counts_widget.dart';
 import '../../../presentation/dashboard/widgets/treatment_stats_widget.dart';
+// Неоморфные компоненты дизайн‑системы
+import '../design_system/design_system_screen.dart' show NeoCard, NeoButton, NeoTabBar, DesignTokens;
 
 class NewDashboardScreen extends StatefulWidget {
   const NewDashboardScreen({Key? key}) : super(key: key);
@@ -56,164 +59,173 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
-    
+    // Новый фон под неоморфизм
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          color: Color(0xFF202020), // Темно-серый фон
-        ),
+      backgroundColor: DesignTokens.background,
+      body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12.0),
-          // Всегда используем только ландшафтный макет
-          child: _buildLandscapeLayout(context),
+          child: _buildNeoLayout(context),
         ),
       ),
     );
   }
 
-  // Ландшафтный макет (похож на текущий)
-  Widget _buildLandscapeLayout(BuildContext context) {
+  // Новый неоморфный макет дашборда
+  Widget _buildNeoLayout(BuildContext context) {
     return Row(
       children: [
-        // Левая узкая панель меню
-        AnimatedBuilder(
-          animation: _fadeAnimation,
-          builder: (context, child) {
-            return Opacity(
-              opacity: _fadeAnimation.value,
-              child: Transform.translate(
-                offset: Offset(-30 * (1 - _fadeAnimation.value), 0),
-                child: child,
-              ),
-            );
-          },
-          child: _buildSidebarPanel(context),
-        ),
-
-        SizedBox(width: 16),
-
-        // Центральная и правая части
+        // Левая колонка: метрики, быстрые действия
         Expanded(
+          flex: 1,
           child: Column(
             children: [
-              // Верхняя панель с поиском
+              // Приветствие/шапка
               AnimatedBuilder(
                 animation: _fadeAnimation,
                 builder: (context, child) {
                   return Opacity(
                     opacity: _fadeAnimation.value,
                     child: Transform.translate(
-                      offset: Offset(0, -30 * (1 - _fadeAnimation.value)),
+                      offset: Offset(0, -20 * (1 - _fadeAnimation.value)),
                       child: child,
                     ),
                   );
                 },
-                child: _buildHeaderPanel(context),
+                child: NeoCard(
+                  child: Row(
+                    children: [
+                      // Аватар
+                      const Padding(
+                        padding: EdgeInsets.only(right: 16),
+                        child: CircleAvatar(
+                          radius: 24,
+                          backgroundColor: Colors.white,
+                          child: Text('👨‍⚕️', style: TextStyle(fontSize: 20)),
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text('Добрый день, доктор!', style: DesignTokens.h3),
+                            SizedBox(height: 4),
+                            Text('Ваше рабочее пространство', style: DesignTokens.small),
+                          ],
+                        ),
+                      ),
+                      NeoButton(
+                        label: 'Добавить',
+                        onPressed: () => context.push('/add'),
+                        primary: true,
+                      ),
+                    ],
+                  ),
+                ),
               ),
+              const SizedBox(height: 12),
 
-              SizedBox(height: 16),
-
-              // Основная часть (центр + правая колонка)
+              // Статистика процедур (верхняя основная панель)
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Центральная колонка (теперь занимает всё доступное пространство)
-                    Expanded(
-                      child: Column(
-                        children: [
-                          // Верхняя основная панель
-                          Expanded(
-                            flex: 2,
-                            child: AnimatedBuilder(
-                              animation: _fadeAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _fadeAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(0, 30 * (1 - _fadeAnimation.value)),
-                                    child: child,
-                                  ),
-                                );
-                              },
-                              child: _buildMainTopPanel(context),
-                            ),
-                          ),
-
-                          SizedBox(height: 16),
-
-                          // Нижняя основная панель
-                          Expanded(
-                            flex: 1,
-                            child: AnimatedBuilder(
-                              animation: _fadeAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _fadeAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(0, 40 * (1 - _fadeAnimation.value)),
-                                    child: child,
-                                  ),
-                                );
-                              },
-                              child: _buildMainBottomPanel(context),
-                            ),
-                          ),
-                        ],
+                flex: 2,
+                child: AnimatedBuilder(
+                  animation: _fadeAnimation,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _fadeAnimation.value,
+                      child: Transform.translate(
+                        offset: Offset(0, 20 * (1 - _fadeAnimation.value)),
+                        child: child,
                       ),
+                    );
+                  },
+                  child: NeoCard(
+                    child: _buildMainTopPanel(context),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Быстрые действия 2x2
+              AnimatedBuilder(
+                animation: _fadeAnimation,
+                builder: (context, child) {
+                  return Opacity(
+                    opacity: _fadeAnimation.value,
+                    child: Transform.translate(
+                      offset: Offset(0, 30 * (1 - _fadeAnimation.value)),
+                      child: child,
                     ),
+                  );
+                },
+                child: NeoCard(
+                  child: GridView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 3.2,
+                    ),
+                    children: [
+                      NeoButton(label: 'Запись', onPressed: () {}),
+                      NeoButton(label: 'Поиск', onPressed: () => context.push('/search')),
+                      NeoButton(label: 'Пациенты', onPressed: () => context.push('/search')),
+                      NeoButton(label: 'Отчёты', onPressed: () => context.push('/reports')),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
 
-                    SizedBox(width: 16),
+        const SizedBox(width: 12),
 
-                    // Правая колонка
-                    Container(
-                      width: 300,
-                      child: Column(
-                        children: [
-                          // Верхняя правая панель
-                          Expanded(
-                            flex: 1,
-                            child: AnimatedBuilder(
-                              animation: _fadeAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _fadeAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(30 * (1 - _fadeAnimation.value), 0),
-                                    child: child,
-                                  ),
-                                );
-                              },
-                              child: _buildRightTopPanel(context),
-                            ),
-                          ),
-
-                          SizedBox(height: 16),
-
-                          // Нижняя правая панель
-                          Expanded(
-                            flex: 2,
-                            child: AnimatedBuilder(
-                              animation: _fadeAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _fadeAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(40 * (1 - _fadeAnimation.value), 0),
-                                    child: child,
-                                  ),
-                                );
-                              },
-                              child: _buildRightBottomPanel(context),
-                            ),
-                          ),
-                        ],
+        // Правая колонка: мини‑панели и счётчики
+        SizedBox(
+          width: 320,
+          child: Column(
+            children: [
+              // Верхняя правая панель (заглушка в неоморфном контейнере)
+              Expanded(
+                flex: 1,
+                child: AnimatedBuilder(
+                  animation: _fadeAnimation,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _fadeAnimation.value,
+                      child: Transform.translate(
+                        offset: Offset(20 * (1 - _fadeAnimation.value), 0),
+                        child: child,
                       ),
-                    ),
-                  ],
+                    );
+                  },
+                  child: NeoCard(
+                    child: _buildRightTopPanel(context),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Нижняя правая панель: счётчики пациентов (на Riverpod)
+              Expanded(
+                flex: 2,
+                child: AnimatedBuilder(
+                  animation: _fadeAnimation,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _fadeAnimation.value,
+                      child: Transform.translate(
+                        offset: Offset(30 * (1 - _fadeAnimation.value), 0),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: const NeoCard(
+                    child: PatientCountsWidget(),
+                  ),
                 ),
               ),
             ],
@@ -595,28 +607,10 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
     );
   }
 
-  // Верхняя панель с поиском
+  // Верхняя панель (неоморфная пустая полоса под будущий поиск/фильтры)
   Widget _buildHeaderPanel(BuildContext context) {
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        color: Color(0xFF2A2A2A), // Однотонный темно-серый
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 10,
-            spreadRadius: 0,
-            offset: Offset(4, 4),
-          ),
-        ],
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 1.0,
-        ),
-      ),
-      // Пустая панель без содержимого
-      child: Container(),
+    return const NeoCard(
+      child: SizedBox(height: 60),
     );
   }
 
@@ -625,91 +619,31 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
     return TreatmentStatsWidget(isPortrait: isPortrait);
   }
 
-  // Нижняя основная панель (сейчас оставим как заглушку-контейнер)
+  // Нижняя основная панель (пока как заглушка, но в неоморфном контейнере)
   Widget _buildMainBottomPanel(BuildContext context, {bool isPortrait = false}) {
-    return Container(
-      height: isPortrait ? 150 : null,
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 10,
-            spreadRadius: 0,
-            offset: const Offset(4, 4),
-          ),
-        ],
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 1.0,
-        ),
-      ),
-      child: const Center(
-        child: Text(
-          'Main Panel (Bottom)',
-          style: TextStyle(color: Colors.white70, fontSize: 18),
+    return const NeoCard(
+      child: SizedBox(
+        height: 150,
+        child: Center(
+          child: Text('Main Panel (Bottom)', style: DesignTokens.h4),
         ),
       ),
     );
   }
 
-  // Верхняя правая панель
+  // Верхняя правая панель (заглушка)
   Widget _buildRightTopPanel(BuildContext context, {bool isPortrait = false}) {
-    return Container(
-      height: isPortrait ? 150 : null, // Фиксированная высота в портретном режиме
-      decoration: BoxDecoration(
-        color: Color(0xFF2A2A2A), // Однотонный темно-серый
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 10,
-            spreadRadius: 0,
-            offset: Offset(4, 4),
-          ),
-        ],
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 1.0,
-        ),
-      ),
-      // Добавим текст, чтобы панель была не пустой
+    return const SizedBox(
+      height: 150,
       child: Center(
-        child: Text(
-          'Right Panel (Top)',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: isPortrait ? 16 : 18,
-          ),
-        ),
+        child: Text('Right Panel (Top)', style: DesignTokens.h4),
       ),
     );
   }
 
-  // Нижняя правая панель — теперь на Riverpod-данных
+  // Нижняя правая панель — теперь на Riverpod-данных (обернётся NeoCard выше)
   Widget _buildRightBottomPanel(BuildContext context, {bool isPortrait = false}) {
-    return Container(
-      height: isPortrait ? 180 : null,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 10,
-            spreadRadius: 0,
-            offset: const Offset(4, 4),
-          ),
-        ],
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 1.0,
-        ),
-      ),
-      child: const PatientCountsWidget(),
-    );
+    return const PatientCountsWidget();
   }
 
   Widget _buildMenuItem(IconData? icon, String title, {bool active = false, bool highlight = false}) {
