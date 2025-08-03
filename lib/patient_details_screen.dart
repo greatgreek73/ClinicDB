@@ -10,6 +10,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'payment.dart';
 import 'notes_widget.dart';
 
+// Дизайн‑система (неоморфизм)
+import 'design_system/design_system_screen.dart' show NeoCard, NeoButton, DesignTokens;
+
 final priceFormatter = NumberFormat('#,###', 'ru_RU');
 
 class PatientDetailsScreen extends StatefulWidget {
@@ -33,6 +36,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     _loadPlannedTreatment();
   }
 
+  @override
+  void dispose() {
+    _plannedTreatmentController.dispose();
+    super.dispose();
+  }
+
   Future<void> _updatePatientField(String field, dynamic value) async {
     try {
       await FirebaseFirestore.instance
@@ -44,355 +53,1084 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     }
   }
 
-  Widget _buildToggleRow(String title, bool value, Function(bool?) onChanged, TextStyle titleStyle) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: titleStyle),
-          Checkbox(
-            value: value,
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _plannedTreatmentController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Детали Пациента'),
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.edit),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => EditPatientScreen(patientId: widget.patientId),
+      backgroundColor: DesignTokens.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('patients')
+                .doc(widget.patientId)
+                .snapshots(),
+            builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+              if (snapshot.connectionState == ConnectionState.active) {
+                if (snapshot.hasData && snapshot.data?.data() != null) {
+                  final patientData = snapshot.data!.data() as Map<String, dynamic>;
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Основная колонка (левая)
+                      Expanded(
+                        flex: 2,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              _buildPatientHeaderCard(patientData),
+                              const SizedBox(height: 16),
+                              _buildFinancialSummaryCard(patientData),
+                              const SizedBox(height: 16),
+                              _buildPersonalInfoCard(patientData),
+                              const SizedBox(height: 16),
+                              _buildTreatmentHistoryCard(),
+                              const SizedBox(height: 16),
+                              _buildPlannedTreatmentCard(),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 16),
+
+                      // Боковая колонка (правая)
+                      SizedBox(
+                        width: 350,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              _buildTreatmentStatsCard(),
+                              const SizedBox(height: 16),
+                              _buildTeethSchemaCard(),
+                              const SizedBox(height: 16),
+                              _buildAdditionalPhotosCard(patientData),
+                              const SizedBox(height: 16),
+                              _buildNotesCard(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                } else if (snapshot.hasError) {
+                  return Center(
+                    child: NeoCard(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text('Ошибка: ${snapshot.error}'),
+                      ),
+                    ),
+                  );
+                }
+              }
+              return const Center(
+                child: SizedBox(
+                  height: 28,
+                  width: 28,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               );
             },
           ),
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => AddTreatmentScreen(patientId: widget.patientId),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.delete),
-            onPressed: () => _confirmDeletion(context, widget.patientId),
-          ),
-        ],
-      ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance.collection('patients').doc(widget.patientId).snapshots(),
-        builder: (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
-          if (snapshot.connectionState == ConnectionState.active) {
-            if (snapshot.hasData) {
-              var patientData = snapshot.data!.data() as Map<String, dynamic>;
-              return ListView(
-                children: <Widget>[
-                  _buildPatientInfoCard(context, patientData),
-                  _buildTreatmentSchemas(widget.patientId),
-                  _buildTreatmentsSection(widget.patientId),
-                  _buildAdditionalPhotosSection(patientData),
-                  _buildPlannedTreatmentSection(context),
-                  NotesWidget(patientId: widget.patientId),
-                ],
-              );
-            } else if (snapshot.hasError) {
-              return Text('Ошибка: ${snapshot.error}');
-            }
-          }
-          return Center(child: CircularProgressIndicator());
-        },
+        ),
       ),
     );
   }
-  Widget _buildPatientInfoCard(BuildContext context, Map<String, dynamic> patientData) {
-    return Center(
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.5,
-        margin: EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.3),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: Offset(0, 3),
+
+  /// Карточка заголовка пациента с основной информацией
+  Widget _buildPatientHeaderCard(Map<String, dynamic> patientData) {
+    return NeoCard(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Аватар пациента (уменьшенный) - отцентрирован по вертикали
+            Center(
+              child: _buildPatientAvatar(patientData['photoUrl'], patientData: patientData),
+            ),
+            const SizedBox(width: 20),
+            
+            // Основная информация
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // ФИО - отцентрировано по горизонтали
+                  Center(
+                    child: Text(
+                      '${patientData['surname'] ?? ''} ${patientData['name'] ?? ''}'.trim(),
+                      style: DesignTokens.h1.copyWith(fontSize: 24),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Статусные бэйджи
+                  _buildStatusBadges(patientData),
+                  const SizedBox(height: 16),
+                  
+                  // Личная информация в сетке
+                  _buildPersonalInfoGrid(patientData),
+                ],
+              ),
             ),
           ],
         ),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildPatientPhoto(patientData['photoUrl']),
-              SizedBox(height: 16),
-              _buildPatientDetails(patientData),
-            ],
-          ),
-        ),
       ),
     );
   }
 
-  Widget _buildPatientPhoto(String? photoUrl) {
-    return Container(
-      width: 120,
-      height: 120,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.blue, width: 3),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.5),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ClipOval(
-        child: photoUrl != null
-            ? Image.network(
-                photoUrl,
-                fit: BoxFit.cover,
-              )
-            : Container(
-                color: Colors.grey[300],
-                child: Icon(Icons.person, size: 80, color: Colors.grey[600]),
-              ),
-      ),
-    );
-  }
+  /// Карточка финансовой сводки
+  Widget _buildFinancialSummaryCard(Map<String, dynamic> patientData) {
+    final paymentsData = patientData['payments'] as List<dynamic>? ?? [];
+    final payments = paymentsData.map((p) => Payment.fromMap(p)).toList();
+    final totalPaid = payments.fold<double>(0, (sum, p) => sum + p.amount);
+    final price = (patientData['price'] ?? 0) as num;
+    final remain = price - totalPaid;
 
-  Widget _buildPatientDetails(Map<String, dynamic> patientData) {
-    TextStyle nameStyle = TextStyle(
-      fontSize: 24,
-      fontWeight: FontWeight.bold,
-      color: Colors.blue[800],
-    );
-    TextStyle ageStyle = TextStyle(
-      fontSize: 20,
-      color: Colors.black87,
-    );
-    TextStyle contactStyle = TextStyle(
-      fontSize: 22,
-      color: Colors.black87,
-    );
-    TextStyle titleStyle = TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.bold,
-      color: Colors.blue[800],
-    );
-    TextStyle subtitleStyle = TextStyle(
-      fontSize: 14,
-      color: Colors.black87,
-    );
-
-    bool hadConsultation = patientData['hadConsultation'] == true;
-
-    var paymentsData = patientData['payments'] as List<dynamic>? ?? [];
-    List<Payment> payments = paymentsData.map((p) => Payment.fromMap(p)).toList();
-    double totalPaid = payments.fold(0, (sum, payment) => sum + payment.amount);
-
-    return Column(
-      children: [
-        Text('${patientData['surname']} ${patientData['name']}', style: nameStyle, textAlign: TextAlign.center),
-        Text('${patientData['age']} лет', style: ageStyle, textAlign: TextAlign.center),
-        Text('${patientData['city'] ?? 'Нет данных'} | ${patientData['phone'] ?? 'Нет данных'}', style: contactStyle, textAlign: TextAlign.center),
-        SizedBox(height: 16),
-        _buildDetailRow('Цена', '${priceFormatter.format(patientData['price'])} ₽', titleStyle, subtitleStyle),
-        _buildDetailRow('Оплачено', '${priceFormatter.format(totalPaid)} ₽', titleStyle, subtitleStyle),
-        _buildDetailRow('Осталось', '${priceFormatter.format((patientData['price'] ?? 0) - totalPaid)} ₽', titleStyle, subtitleStyle),
-        _buildDetailRow('Консультация', hadConsultation ? 'Да' : 'Нет', titleStyle, subtitleStyle),
-        _buildToggleRow('Список ожидания', patientData['waitingList'] == true, (value) {
-          setState(() {
-            _waitingList = value ?? false;
-          });
-          _updatePatientField('waitingList', value);
-        }, titleStyle),
-        _buildToggleRow('Второй этап', patientData['secondStage'] == true, (value) {
-          setState(() {
-            _secondStage = value ?? false;
-          });
-          _updatePatientField('secondStage', value);
-        }, titleStyle),
-        _buildToggleRow('Горящий пациент', patientData['hotPatient'] == true, (value) {
-          setState(() {
-            _hotPatient = value ?? false;
-          });
-          _updatePatientField('hotPatient', value);
-        }, titleStyle),
-        SizedBox(height: 16),
-        _buildPaymentsHistory(payments),
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(String title, String value, TextStyle titleStyle, TextStyle subtitleStyle) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: titleStyle),
-          Text(value, style: subtitleStyle),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentsHistory(List<Payment> payments) {
-    return ExpansionTile(
-      title: Text('История платежей', style: TextStyle(fontWeight: FontWeight.bold)),
-      children: payments.map((payment) => ListTile(
-        title: Text('${priceFormatter.format(payment.amount)} ₽'),
-        subtitle: Text(DateFormat('yyyy-MM-dd').format(payment.date)),
-        trailing: Icon(Icons.payment, color: Colors.green),
-      )).toList(),
-    );
-  }
-  Widget _buildTreatmentSchemas(String patientId) {
-    return FutureBuilder<Map<String, int>>(
-      future: _getTreatmentCounts(patientId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Text('Ошибка: ${snapshot.error}');
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Text('Нет данных о лечении');
-        }
-
-        var sortedTreatments = snapshot.data!.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-        var topFourTreatments = sortedTreatments.take(4).toList();
-
-        return Column(
+    return NeoCard(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[0].key, _getColor(topFourTreatments[0].key))),
-                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[1].key, _getColor(topFourTreatments[1].key))),
+                const Text('💰', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 8),
+                Text('Финансовая сводка', style: DesignTokens.h2),
               ],
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 20),
+            
+            // Основные финансовые показатели
             Row(
               children: [
-                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[2].key, _getColor(topFourTreatments[2].key))),
-                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[3].key, _getColor(topFourTreatments[3].key))),
+                Expanded(
+                  child: _buildFinancialMetric(
+                    'Общая стоимость',
+                    '${priceFormatter.format(price)} ₽',
+                    DesignTokens.accentPrimary,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildFinancialMetric(
+                    'Оплачено',
+                    '${priceFormatter.format(totalPaid)} ₽',
+                    DesignTokens.accentSuccess,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildFinancialMetric(
+                    'К доплате',
+                    '${priceFormatter.format(remain)} ₽',
+                    remain > 0 ? DesignTokens.accentWarning : DesignTokens.accentSuccess,
+                  ),
+                ),
               ],
             ),
+            
+            if (payments.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  const Text('💳', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  Text('История платежей', style: DesignTokens.h4),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildPaymentsHistory(payments),
+            ],
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _buildTreatmentSchema(String patientId, String treatmentType, Color color) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('treatments')
-          .where('patientId', isEqualTo: patientId)
-          .where('treatmentType', isEqualTo: treatmentType)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Text('Ошибка загрузки данных о лечении: ${snapshot.error}');
-        }
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
-
-        List<int> treatedTeeth = [];
-        snapshot.data!.docs.forEach((doc) {
-          var data = doc.data() as Map<String, dynamic>;
-          treatedTeeth.addAll(List<int>.from(data['toothNumber']));
-        });
-
-        return Card(
-          child: Padding(
-            padding: EdgeInsets.all(8),
-            child: Column(
+  /// Карточка управления статусами (уменьшенная версия)
+  Widget _buildPersonalInfoCard(Map<String, dynamic> patientData) {
+    return NeoCard(
+      child: Padding(
+        padding: const EdgeInsets.all(12.0), // Еще более уменьшенные отступы
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    treatmentType,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
-                    textAlign: TextAlign.center,
+                const Text('⚙️', style: TextStyle(fontSize: 18)), // Уменьшенная иконка
+                const SizedBox(width: 6),
+                Text('Управление статусами', style: DesignTokens.h4.copyWith(fontSize: 15)), // Еще меньший заголовок
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            // Переключатели статусов в компактном виде
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactStatusToggle(
+                    'Список ожидания',
+                    patientData['waitingList'] == true,
+                    (value) {
+                      setState(() => _waitingList = value ?? false);
+                      _updatePatientField('waitingList', value);
+                    },
                   ),
                 ),
-                SizedBox(height: 10),
-                SizedBox(
-                  height: 100,
-                  child: GridView.builder(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 16,
-                      childAspectRatio: 1,
-                      crossAxisSpacing: 2,
-                      mainAxisSpacing: 2,
-                    ),
-                    itemCount: 32,
-                    itemBuilder: (context, index) {
-                      int toothNumber = _getToothNumber(index);
-                      bool isTreated = treatedTeeth.contains(toothNumber);
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: isTreated ? color : Colors.grey[300],
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            toothNumber.toString(),
-                            style: TextStyle(
-                              color: isTreated ? Colors.white : Colors.black,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      );
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactStatusToggle(
+                    'Второй этап',
+                    patientData['secondStage'] == true,
+                    (value) {
+                      setState(() => _secondStage = value ?? false);
+                      _updatePatientField('secondStage', value);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactStatusToggle(
+                    'Горящий пациент',
+                    patientData['hotPatient'] == true,
+                    (value) {
+                      setState(() => _hotPatient = value ?? false);
+                      _updatePatientField('hotPatient', value);
                     },
                   ),
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Карточка истории лечения
+  Widget _buildTreatmentHistoryCard() {
+    return NeoCard(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Text('🦷', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: 8),
+                    Text('История лечения', style: DesignTokens.h2),
+                  ],
+                ),
+                // Кнопки действий с пациентом
+                Row(
+                  children: [
+                    NeoButton(
+                      label: 'Редактировать данные',
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => EditPatientScreen(patientId: widget.patientId),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    NeoButton(
+                      label: '+ Добавить лечение',
+                      primary: true,
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => AddTreatmentScreen(patientId: widget.patientId),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    NeoButton(
+                      label: 'Удалить пациента',
+                      onPressed: () => _confirmDeletion(context, widget.patientId),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            Container(
+              constraints: const BoxConstraints(maxHeight: 400),
+              child: _buildTreatmentsSection(widget.patientId),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Карточка планируемого лечения с действиями
+  Widget _buildPlannedTreatmentCard() {
+    return NeoCard(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('📋', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 8),
+                Text('Планируемое лечение', style: DesignTokens.h2),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            NeoCard.inset(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: TextField(
+                  controller: _plannedTreatmentController,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText: 'Введите план лечения...',
+                    hintStyle: TextStyle(color: DesignTokens.textMuted),
+                  ),
+                  readOnly: true,
+                  maxLines: null,
+                  minLines: 3,
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Кнопки действий для планов
+            Row(
+              children: [
+                NeoButton(
+                  label: 'Добавить план',
+                  primary: true,
+                  onPressed: () => _navigateAndDisplaySelection(context),
+                ),
+                const SizedBox(width: 12),
+                NeoButton(
+                  label: 'Очистить',
+                  onPressed: () {
+                    _plannedTreatmentController.clear();
+                    _savePlannedTreatment('');
+                  },
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 20),
+            
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Карточка статистики лечения
+  Widget _buildTreatmentStatsCard() {
+    return NeoCard(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('📊', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 8),
+                Text('Статистика лечения', style: DesignTokens.h2),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildTreatmentStatsGrid(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Карточка схемы зубов
+  Widget _buildTeethSchemaCard() {
+    return NeoCard(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('🦷', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 8),
+                Text('Схема зубов', style: DesignTokens.h2),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildTreatmentSchemas(widget.patientId),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Карточка дополнительных фото
+  Widget _buildAdditionalPhotosCard(Map<String, dynamic> patientData) {
+    return NeoCard(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Text('📸', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: 8),
+                    Text('Дополнительные фото', style: DesignTokens.h2),
+                  ],
+                ),
+                NeoButton(
+                  label: '+ Добавить',
+                  onPressed: _addAdditionalPhoto,
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildPhotosGrid(patientData),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Карточка заметок
+  Widget _buildNotesCard() {
+    return NeoCard(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('📝', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 8),
+                Text('Заметки', style: DesignTokens.h2),
+              ],
+            ),
+            const SizedBox(height: 20),
+            NotesWidget(patientId: widget.patientId),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // === ВСПОМОГАТЕЛЬНЫЕ ВИДЖЕТЫ ===
+
+  Widget _buildPatientAvatar(String? photoUrl, {Map<String, dynamic>? patientData}) {
+    // Определяем цвет ободка в зависимости от статуса пациента
+    Color borderColor = DesignTokens.accentPrimary;
+    if (patientData != null) {
+      if (patientData['hotPatient'] == true) {
+        borderColor = DesignTokens.accentDanger;
+      } else if (patientData['secondStage'] == true) {
+        borderColor = DesignTokens.accentSuccess;
+      } else if (patientData['waitingList'] == true) {
+        borderColor = DesignTokens.accentWarning;
+      }
+    }
+    
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: borderColor,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: borderColor.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(40),
+        child: Container(
+          width: 76,
+          height: 76,
+          color: DesignTokens.surface,
+          child: photoUrl != null
+              ? Image.network(
+                  photoUrl, 
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Center(
+                      child: Text('👤', style: TextStyle(fontSize: 28)),
+                    );
+                  },
+                )
+              : const Center(
+                  child: Text('👤', style: TextStyle(fontSize: 28)),
+                ),
+        ),
+      ),
+    );
+  }
+
+  /// Сетка личной информации для заголовка
+  Widget _buildPersonalInfoGrid(Map<String, dynamic> patientData) {
+    return FutureBuilder<String>(
+      future: _getLastVisitDate(),
+      builder: (context, snapshot) {
+        final lastVisit = snapshot.data ?? 'Загрузка...';
+        
+        return Column(
+          children: [
+            // Первый ряд
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactInfoItem(
+                    'Возраст', 
+                    '${patientData['age'] ?? 'Не указан'} лет',
+                    Icons.cake_outlined,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildCompactInfoItem(
+                    'Пол', 
+                    '${patientData['gender'] ?? 'Не указан'}',
+                    Icons.person_outline,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildCompactInfoItem(
+                    'Город', 
+                    '${patientData['city'] ?? 'Не указан'}',
+                    Icons.location_city_outlined,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Второй ряд
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactInfoItem(
+                    'Телефон', 
+                    '${patientData['phone'] ?? 'Не указан'}',
+                    Icons.phone_outlined,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildCompactInfoItem(
+                    'Последний визит', 
+                    lastVisit,
+                    Icons.schedule_outlined,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildCompactInfoItem(
+                    'Консультация', 
+                    patientData['hadConsultation'] == true ? 'Была' : 'Не была',
+                    Icons.chat_bubble_outline,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Компактный элемент информации с иконкой
+  Widget _buildCompactInfoItem(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: DesignTokens.background.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: DesignTokens.shadowDark.withOpacity(0.08),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon, 
+            size: 16, 
+            color: DesignTokens.textSecondary.withOpacity(0.7),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: DesignTokens.small.copyWith(
+                    color: DesignTokens.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  value,
+                  style: DesignTokens.body.copyWith(
+                    color: DesignTokens.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Получить дату последнего визита из истории лечения
+  Future<String> _getLastVisitDate() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('treatments')
+          .where('patientId', isEqualTo: widget.patientId)
+          .orderBy('date', descending: true)
+          .limit(1)
+          .get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        final lastTreatment = snapshot.docs.first;
+        final date = (lastTreatment['date'] as Timestamp).toDate();
+        
+        // Проверяем, сегодня ли был визит
+        final today = DateTime.now();
+        final treatmentDate = DateTime(date.year, date.month, date.day);
+        final todayDate = DateTime(today.year, today.month, today.day);
+        
+        if (treatmentDate == todayDate) {
+          return 'Сегодня';
+        } else {
+          final difference = todayDate.difference(treatmentDate).inDays;
+          if (difference == 1) {
+            return 'Вчера';
+          } else if (difference < 7) {
+            return '$difference дн. назад';
+          } else if (difference < 30) {
+            final weeks = (difference / 7).floor();
+            return '$weeks нед. назад';
+          } else if (difference < 365) {
+            // Форматируем дату красиво
+            final months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 
+                           'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+            if (date.year == today.year) {
+              return '${date.day} ${months[date.month - 1]}';
+            } else {
+              return '${date.day} ${months[date.month - 1]} ${date.year}';
+            }
+          } else {
+            return DateFormat('dd.MM.yyyy').format(date);
+          }
+        }
+      } else {
+        return 'Не был';
+      }
+    } catch (e) {
+      print('Ошибка получения последнего визита: $e');
+      return 'Ошибка';
+    }
+  }
+
+  Widget _buildStatusBadges(Map<String, dynamic> patientData) {
+    final badges = <Widget>[];
+    
+    if (patientData['waitingList'] == true) {
+      badges.add(_buildStatusBadge('Список ожидания', DesignTokens.accentWarning));
+    }
+    
+    if (patientData['secondStage'] == true) {
+      badges.add(_buildStatusBadge('Второй этап', DesignTokens.accentSuccess));
+    }
+    
+    if (patientData['hotPatient'] == true) {
+      badges.add(_buildStatusBadge('Горящий пациент', DesignTokens.accentDanger));
+    }
+    
+    if (badges.isEmpty) return const SizedBox.shrink();
+    
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: badges,
+    );
+  }
+
+  Widget _buildStatusBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        text,
+        style: DesignTokens.small.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFinancialMetric(String label, String value, Color accentColor) {
+    return NeoCard.inset(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: DesignTokens.h2.copyWith(
+                color: accentColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: DesignTokens.small.copyWith(
+                color: DesignTokens.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(String label, String value) {
+    return NeoCard.inset(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: DesignTokens.body.copyWith(
+                color: DesignTokens.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                value,
+                style: DesignTokens.body.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.end,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusToggle(String title, bool value, Function(bool?) onChanged) {
+    return NeoCard.inset(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // Уменьшенные отступы
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: DesignTokens.small.copyWith( // Уменьшенный шрифт
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            Transform.scale(
+              scale: 0.9, // Уменьшенный checkbox
+              child: Checkbox(
+                value: value,
+                onChanged: onChanged,
+                activeColor: DesignTokens.accentPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactStatusToggle(String title, bool value, Function(bool?) onChanged) {
+    return NeoCard.inset(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Очень компактные отступы
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              title,
+              style: DesignTokens.small.copyWith(
+                fontWeight: FontWeight.w500,
+                fontSize: 11,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Transform.scale(
+              scale: 0.8, // Еще меньший checkbox
+              child: Checkbox(
+                value: value,
+                onChanged: onChanged,
+                activeColor: DesignTokens.accentPrimary,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentsHistory(List<Payment> payments) {
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 200),
+      child: SingleChildScrollView(
+        child: Column(
+          children: payments.map((payment) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: NeoCard.inset(
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: DesignTokens.accentSuccess,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '${priceFormatter.format(payment.amount)} ₽',
+                          style: DesignTokens.body.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      Text(
+                        DateFormat('dd.MM.yyyy').format(payment.date),
+                        style: DesignTokens.small.copyWith(
+                          color: DesignTokens.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTreatmentStatsGrid() {
+    return FutureBuilder<Map<String, int>>(
+      future: _getTreatmentCounts(widget.patientId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Text('Ошибка: ${snapshot.error}');
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Text('Нет данных о лечении');
+        }
+
+        final treatments = snapshot.data!;
+        final sortedTreatments = treatments.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 1.2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: sortedTreatments.length.clamp(0, 6), // Показываем максимум 6
+          itemBuilder: (context, index) {
+            final treatment = sortedTreatments[index];
+            return _buildTreatmentStatCard(treatment.key, treatment.value);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTreatmentStatCard(String treatmentType, int count) {
+    final icon = _getTreatmentIcon(treatmentType);
+    final color = _getColor(treatmentType);
+    
+    return NeoCard.inset(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              icon,
+              style: const TextStyle(fontSize: 24),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              count.toString(),
+              style: DesignTokens.h2.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              treatmentType,
+              style: DesignTokens.small.copyWith(
+                color: DesignTokens.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotosGrid(Map<String, dynamic> patientData) {
+    final List<dynamic> additionalPhotos = patientData['additionalPhotos'] ?? [];
+
+    if (additionalPhotos.isEmpty) {
+      return NeoCard.inset(
+        child: Container(
+          height: 120,
+          child: const Center(
+            child: Text(
+              'Нет дополнительных фотографий',
+              style: TextStyle(
+                color: DesignTokens.textMuted,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1,
+      ),
+      itemCount: additionalPhotos.length,
+      itemBuilder: (context, index) {
+        final photo = additionalPhotos[index];
+        return InkWell(
+          onTap: () => _showImageDialog(photo),
+          child: NeoCard.inset(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                photo['url'],
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Center(
+                    child: Icon(
+                      Icons.error_outline,
+                      color: DesignTokens.textMuted,
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
         );
       },
     );
+  }
+
+  // === МЕТОДЫ ДАННЫХ ===
+
+  String _getTreatmentIcon(String treatmentType) {
+    final icons = {
+      'Кариес': '🦷',
+      'Имплантация': '🔩',
+      'Удаление': '🗑️',
+      'Сканирование': '📷',
+      'Эндо': '🔬',
+      'Формирователь': '⚙️',
+      'PMMA': '🧪',
+      'Коронка': '👑',
+      'Абатмент': '🔧',
+      'Сдача PMMA': '📦',
+      'Сдача коронка': '👑',
+      'Сдача абатмент': '🔧',
+      'Удаление импланта': '❌',
+    };
+    return icons[treatmentType] ?? '🦷';
   }
 
   Future<Map<String, int>> _getTreatmentCounts(String patientId) async {
@@ -424,12 +1162,259 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       
       if (treatmentCounts.containsKey(treatmentType)) {
         treatmentCounts[treatmentType] = treatmentCounts[treatmentType]! + toothNumbers;
-      } else {
-        print('Неизвестный тип лечения: $treatmentType');
       }
     }
 
-    return treatmentCounts;
+    // Возвращаем только те типы лечения, которые есть у пациента
+    return Map.fromEntries(
+      treatmentCounts.entries.where((entry) => entry.value > 0)
+    );
+  }
+
+  Widget _buildTreatmentSchemas(String patientId) {
+    return FutureBuilder<Map<String, int>>(
+      future: _getTreatmentCounts(patientId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Text('Ошибка: ${snapshot.error}');
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Text('Нет данных о лечении');
+        }
+
+        var sortedTreatments = snapshot.data!.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        var topFourTreatments = sortedTreatments.take(4).toList();
+
+        return Column(
+          children: [
+            Row(
+              children: [
+                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[0].key, _getColor(topFourTreatments[0].key))),
+                const SizedBox(width: 12),
+                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments.length > 1 ? topFourTreatments[1].key : '', _getColor(topFourTreatments.length > 1 ? topFourTreatments[1].key : ''))),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments.length > 2 ? topFourTreatments[2].key : '', _getColor(topFourTreatments.length > 2 ? topFourTreatments[2].key : ''))),
+                const SizedBox(width: 12),
+                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments.length > 3 ? topFourTreatments[3].key : '', _getColor(topFourTreatments.length > 3 ? topFourTreatments[3].key : ''))),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTreatmentSchema(String patientId, String treatmentType, Color color) {
+    if (treatmentType.isEmpty) {
+      return NeoCard.inset(
+        child: Container(
+          height: 120,
+          child: const Center(
+            child: Text(
+              '—',
+              style: TextStyle(
+                color: DesignTokens.textMuted,
+                fontSize: 24,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('treatments')
+          .where('patientId', isEqualTo: patientId)
+          .where('treatmentType', isEqualTo: treatmentType)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Text('Ошибка загрузки данных о лечении: ${snapshot.error}');
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        }
+
+        List<int> treatedTeeth = [];
+        for (final doc in snapshot.data!.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          treatedTeeth.addAll(List<int>.from(data['toothNumber'] ?? const []));
+        }
+
+        return NeoCard.inset(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                Text(
+                  treatmentType,
+                  style: DesignTokens.small.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 80,
+                  child: GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 16,
+                      childAspectRatio: 1,
+                      crossAxisSpacing: 1,
+                      mainAxisSpacing: 1,
+                    ),
+                    itemCount: 32,
+                    itemBuilder: (context, index) {
+                      final toothNumber = _getToothNumber(index);
+                      final isTreated = treatedTeeth.contains(toothNumber);
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: isTreated ? color : DesignTokens.background,
+                          border: Border.all(
+                            color: DesignTokens.shadowDark.withOpacity(0.2),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            toothNumber.toString(),
+                            style: TextStyle(
+                              color: isTreated ? Colors.white : DesignTokens.textSecondary,
+                              fontSize: 6,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTreatmentsSection(String patientId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('treatments')
+          .where('patientId', isEqualTo: patientId)
+          .orderBy('date', descending: true)
+          .snapshots(),
+      builder: (context, treatmentSnapshot) {
+        if (treatmentSnapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (treatmentSnapshot.hasError) {
+          return Text('Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}');
+        }
+
+        if (!treatmentSnapshot.hasData || treatmentSnapshot.data!.docs.isEmpty) {
+          return const NeoCard.inset(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Center(
+                child: Text(
+                  'Нет данных о лечении',
+                  style: TextStyle(
+                    color: DesignTokens.textMuted,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        var treatments = _groupTreatmentsByDate(treatmentSnapshot.data!.docs);
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: treatments.keys.length,
+          itemBuilder: (context, index) {
+            DateTime date = treatments.keys.elementAt(index);
+            var treatmentInfos = treatments[date]!;
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: NeoCard.inset(
+                child: Theme(
+                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    title: Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: DesignTokens.accentPrimary,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          DateFormat('dd.MM.yyyy').format(date),
+                          style: DesignTokens.body.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          '(${treatmentInfos.length} процедур)',
+                          style: DesignTokens.small.copyWith(
+                            color: DesignTokens.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    children: treatmentInfos.map((treatmentInfo) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        child: Row(
+                          children: [
+                            Text(_getTreatmentIcon(treatmentInfo.treatmentType)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                treatmentInfo.treatmentType,
+                                style: DesignTokens.body,
+                              ),
+                            ),
+                            Text(
+                              'Зубы: ${treatmentInfo.toothNumbers.join(", ")}',
+                              style: DesignTokens.small.copyWith(
+                                color: DesignTokens.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Color _getColor(String treatmentType) {
@@ -453,113 +1438,45 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   }
 
   int _getToothNumber(int index) {
-  if (index < 16) {
-    // Верхний ряд: 18 17 16 15 14 13 12 11 21 22 23 24 25 26 27 28
-    return index < 8 ? 18 - index : 21 + (index - 8);
-  } else {
-    // Нижний ряд: 48 47 46 45 44 43 42 41 31 32 33 34 35 36 37 38
-    return index < 24 ? 48 - (index - 16) : 31 + (index - 24);
-  }
-}
-  Widget _buildTreatmentsSection(String patientId) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('treatments')
-          .where('patientId', isEqualTo: patientId)
-          .orderBy('date', descending: true)
-          .snapshots(),
-      builder: (context, treatmentSnapshot) {
-        if (treatmentSnapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
-
-        if (treatmentSnapshot.hasError) {
-          print('Error in _buildTreatmentsSection: ${treatmentSnapshot.error}');
-          print('Error stack trace: ${treatmentSnapshot.stackTrace}');
-          return Text('Ошибка загрузки данных о лечении: ${treatmentSnapshot.error}');
-        }
-
-        if (!treatmentSnapshot.hasData || treatmentSnapshot.data!.docs.isEmpty) {
-          return Text('Нет данных о лечении');
-        }
-
-        var treatments = _groupTreatmentsByDate(treatmentSnapshot.data!.docs);
-
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: treatments.keys.length,
-          itemBuilder: (context, index) {
-            DateTime date = treatments.keys.elementAt(index);
-            var treatmentInfos = treatments[date]!;
-            return ExpansionTile(
-              title: Text(DateFormat('yyyy-MM-dd').format(date)),
-              children: treatmentInfos.map((treatmentInfo) {
-                return ListTile(
-                  title: Text(treatmentInfo.treatmentType),
-                  subtitle: Text('Зубы: ${treatmentInfo.toothNumbers.join(", ")}'),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => AddTreatmentScreen(patientId: patientId, treatmentData: treatmentInfo.toMap()),
-                    ),
-                  ),
-                );
-              }).toList(),
-            );
-          },
-        );
-      },
-    );
+    if (index < 16) {
+      // Верхний ряд: 18 17 16 15 14 13 12 11 21 22 23 24 25 26 27 28
+      return index < 8 ? 18 - index : 21 + (index - 8);
+    } else {
+      // Нижний ряд: 48 47 46 45 44 43 42 41 31 32 33 34 35 36 37 38
+      return index < 24 ? 48 - (index - 16) : 31 + (index - 24);
+    }
   }
 
-  Widget _buildAdditionalPhotosSection(Map<String, dynamic> patientData) {
-    List<dynamic> additionalPhotos = patientData['additionalPhotos'] ?? [];
-    
-    return Card(
-      margin: EdgeInsets.all(8),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Дополнительные фото', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ElevatedButton(
-                  onPressed: _addAdditionalPhoto,
-                  child: Text('Добавить'),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            if (additionalPhotos.isEmpty)
-              Text('Нет дополнительных фотографий')
-            else
-              GridView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                ),
-                itemCount: additionalPhotos.length,
-                itemBuilder: (context, index) {
-                  var photo = additionalPhotos[index];
-                  return GestureDetector(
-                    onTap: () => _showImageDialog(photo),
-                    child: Image.network(
-                      photo['url'],
-                      fit: BoxFit.cover,
-                    ),
-                  );
-                },
-              ),
-          ],
-        ),
-      ),
-    );
+  Map<DateTime, List<TreatmentInfo>> _groupTreatmentsByDate(List<DocumentSnapshot> docs) {
+    Map<DateTime, List<TreatmentInfo>> groupedTreatments = {};
+
+    for (var doc in docs) {
+      var data = doc.data() as Map<String, dynamic>;
+      var timestamp = data['date'] as Timestamp;
+      var dateWithoutTime = DateTime(timestamp.toDate().year, timestamp.toDate().month, timestamp.toDate().day);
+      var treatmentType = data['treatmentType'];
+      var toothNumbers = data['toothNumber'] != null ? List<int>.from(data['toothNumber']) : <int>[];
+      var documentId = doc.id;
+
+      if (!groupedTreatments.containsKey(dateWithoutTime)) {
+        groupedTreatments[dateWithoutTime] = [];
+      }
+
+      bool found = false;
+      for (var treatmentInfo in groupedTreatments[dateWithoutTime]!) {
+        if (treatmentInfo.treatmentType == treatmentType) {
+          found = true;
+          treatmentInfo.toothNumbers.addAll(toothNumbers.where((num) => !treatmentInfo.toothNumbers.contains(num)));
+          break;
+        }
+      }
+
+      if (!found) {
+        groupedTreatments[dateWithoutTime]!.add(TreatmentInfo(treatmentType, toothNumbers, documentId));
+      }
+    }
+
+    return groupedTreatments;
   }
 
   void _showImageDialog(Map<String, dynamic> photo) {
@@ -567,16 +1484,47 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.network(photo['url']),
-              Padding(
-                padding: EdgeInsets.all(8),
-                child: Text(photo['description']),
-              ),
-              Text(DateFormat('yyyy-MM-dd').format((photo['dateAdded'] as Timestamp).toDate())),
-            ],
+          backgroundColor: DesignTokens.background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 400),
+                    child: Image.network(
+                      photo['url'],
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                if (photo['description'] != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    photo['description'],
+                    style: DesignTokens.body,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Text(
+                  DateFormat('dd.MM.yyyy').format((photo['dateAdded'] as Timestamp).toDate()),
+                  style: DesignTokens.small.copyWith(
+                    color: DesignTokens.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                NeoButton(
+                  label: 'Закрыть',
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -615,54 +1563,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     }
   }
 
-  Widget _buildPlannedTreatmentSection(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(10),
-      margin: EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.5),
-            spreadRadius: 5,
-            blurRadius: 7,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text('Планируемое лечение:', style: TextStyle(fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
-          TextField(
-            controller: _plannedTreatmentController,
-            decoration: InputDecoration(border: OutlineInputBorder()),
-            readOnly: true,
-            maxLines: null,
-          ),
-          SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ElevatedButton(
-                onPressed: () => _navigateAndDisplaySelection(context),
-                child: Text('Добавить'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  _plannedTreatmentController.clear();
-                  _savePlannedTreatment('');
-                },
-                child: Text('Очистить'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   void _navigateAndDisplaySelection(BuildContext context) async {
     final result = await Navigator.push(
       context,
@@ -691,15 +1591,23 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Удалить пациента'),
-          content: Text('Вы уверены, что хотите удалить этого пациента?'),
+          backgroundColor: DesignTokens.background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text('Удалить пациента', style: DesignTokens.h3),
+          content: Text(
+            'Вы уверены, что хотите удалить этого пациента? Это действие нельзя будет отменить.',
+            style: DesignTokens.body,
+          ),
           actions: <Widget>[
-            TextButton(
-              child: Text('Отмена'),
+            NeoButton(
+              label: 'Отмена',
               onPressed: () => Navigator.of(context).pop(),
             ),
-            TextButton(
-              child: Text('Удалить'),
+            const SizedBox(width: 12),
+            NeoButton(
+              label: 'Удалить',
               onPressed: () {
                 FirebaseFirestore.instance.collection('patients').doc(patientId).delete().then((_) {
                   Navigator.of(context).popUntil((route) => route.isFirst);
@@ -710,38 +1618,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         );
       },
     );
-  }
-
-  Map<DateTime, List<TreatmentInfo>> _groupTreatmentsByDate(List<DocumentSnapshot> docs) {
-    Map<DateTime, List<TreatmentInfo>> groupedTreatments = {};
-
-    for (var doc in docs) {
-      var data = doc.data() as Map<String, dynamic>;
-      var timestamp = data['date'] as Timestamp;
-      var dateWithoutTime = DateTime(timestamp.toDate().year, timestamp.toDate().month, timestamp.toDate().day);
-      var treatmentType = data['treatmentType'];
-      var toothNumbers = data['toothNumber'] != null ? List<int>.from(data['toothNumber']) : <int>[];
-      var documentId = doc.id;
-
-      if (!groupedTreatments.containsKey(dateWithoutTime)) {
-        groupedTreatments[dateWithoutTime] = [];
-      }
-
-      bool found = false;
-      for (var treatmentInfo in groupedTreatments[dateWithoutTime]!) {
-        if (treatmentInfo.treatmentType == treatmentType) {
-          found = true;
-          treatmentInfo.toothNumbers.addAll(toothNumbers.where((num) => !treatmentInfo.toothNumbers.contains(num)));
-          break;
-        }
-      }
-
-      if (!found) {
-        groupedTreatments[dateWithoutTime]!.add(TreatmentInfo(treatmentType, toothNumbers, documentId));
-      }
-    }
-
-    return groupedTreatments;
   }
 }
 
@@ -770,17 +1646,33 @@ class TreatmentSelectionScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: Text('Выбор лечения')),
-      body: ListView.builder(
-        itemCount: treatments.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            title: Text(treatments[index]),
-            onTap: () {
-              Navigator.pop(context, treatments[index]);
-            },
-          );
-        },
+      backgroundColor: DesignTokens.background,
+      appBar: AppBar(
+        title: Text('Выбор лечения'),
+        backgroundColor: DesignTokens.background,
+        elevation: 0,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ListView.builder(
+          itemCount: treatments.length,
+          itemBuilder: (context, index) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: NeoCard(
+                child: ListTile(
+                  title: Text(
+                    treatments[index],
+                    style: DesignTokens.body,
+                  ),
+                  onTap: () {
+                    Navigator.pop(context, treatments[index]);
+                  },
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

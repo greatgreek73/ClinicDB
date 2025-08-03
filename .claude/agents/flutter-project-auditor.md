@@ -2,6 +2,7 @@
 name: flutter-project-auditor
 description: Use this agent when you need to perform a comprehensive initial audit of a Flutter project to understand its architecture, structure, and key components. This agent analyzes the project's organization, identifies important widgets, examines state management patterns, reviews dependencies, and provides a structured overview of the codebase. <example>\nContext: The user wants to audit a Flutter project they've just inherited or are beginning to work on.\nuser: "I need to understand this Flutter project's structure and architecture"\nassistant: "I'll use the flutter-project-auditor agent to analyze the project structure, widgets, state management, and dependencies."\n<commentary>\nSince the user needs a comprehensive overview of a Flutter project, use the flutter-project-auditor agent to perform a thorough analysis.\n</commentary>\n</example>\n<example>\nContext: The user is onboarding to a new Flutter codebase.\nuser: "Can you help me understand how this Flutter app is organized?"\nassistant: "Let me launch the flutter-project-auditor agent to examine the project structure and provide you with a detailed analysis."\n<commentary>\nThe user needs to understand the organization of a Flutter project, which is exactly what the flutter-project-auditor agent is designed for.\n</commentary>\n</example>
 tools: Glob, Grep, Read, LS, ExitPlanMode, WebSearch
+model: opus
 color: green
 ---
 
