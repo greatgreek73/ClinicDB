@@ -115,6 +115,7 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             ImplantationSummaryWidget(),
             CrownAndAbutmentSummaryWidget(),
+            OneImplantPatientsSummaryWidget(),
             Expanded(
               child: Center(
                 child: Wrap(
@@ -262,6 +263,107 @@ class _ImplantationSummaryWidgetState extends State<ImplantationSummaryWidget> {
           SizedBox(height: 10),
           Text(
             'Количество зубов за текущий год: $totalTeethCountYear',
+            style: TextStyle(fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class OneImplantPatientsSummaryWidget extends StatefulWidget {
+  @override
+  _OneImplantPatientsSummaryWidgetState createState() => _OneImplantPatientsSummaryWidgetState();
+}
+
+class _OneImplantPatientsSummaryWidgetState extends State<OneImplantPatientsSummaryWidget> {
+  DateTime get firstDateOfMonth => DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime get lastDateOfMonth => DateTime(DateTime.now().year, DateTime.now().month + 1, 0, 23, 59, 59);
+  DateTime get firstDateOfYear => DateTime(DateTime.now().year, 1, 1);
+  DateTime get lastDateOfYear => DateTime(DateTime.now().year, 12, 31, 23, 59, 59);
+
+  int oneImplantPatientsMonth = 0;
+  int oneImplantPatientsYear = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    calculateStatistics();
+  }
+
+  Future<void> calculateStatistics() async {
+    // За месяц
+    final monthSnapshot = await FirebaseFirestore.instance
+        .collection('treatments')
+        .where('treatmentType', isEqualTo: 'Имплантация')
+        .where('date', isGreaterThanOrEqualTo: firstDateOfMonth)
+        .where('date', isLessThanOrEqualTo: lastDateOfMonth)
+        .get();
+
+    final Map<String, int> monthImplantsPerPatient = {};
+    for (final doc in monthSnapshot.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final String patientId = data['patientId'] as String? ?? '';
+      if (patientId.isEmpty) continue;
+      final List<dynamic> toothNumbersDyn = List.from(data['toothNumber'] ?? []);
+      final int implantsInThisTreatment = toothNumbersDyn.length;
+      monthImplantsPerPatient.update(patientId, (v) => v + implantsInThisTreatment, ifAbsent: () => implantsInThisTreatment);
+    }
+    final int monthCount = monthImplantsPerPatient.values.where((v) => v == 1).length;
+
+    // За год
+    final yearSnapshot = await FirebaseFirestore.instance
+        .collection('treatments')
+        .where('treatmentType', isEqualTo: 'Имплантация')
+        .where('date', isGreaterThanOrEqualTo: firstDateOfYear)
+        .where('date', isLessThanOrEqualTo: lastDateOfYear)
+        .get();
+
+    final Map<String, int> yearImplantsPerPatient = {};
+    for (final doc in yearSnapshot.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final String patientId = data['patientId'] as String? ?? '';
+      if (patientId.isEmpty) continue;
+      final List<dynamic> toothNumbersDyn = List.from(data['toothNumber'] ?? []);
+      final int implantsInThisTreatment = toothNumbersDyn.length;
+      yearImplantsPerPatient.update(patientId, (v) => v + implantsInThisTreatment, ifAbsent: () => implantsInThisTreatment);
+    }
+    final int yearCount = yearImplantsPerPatient.values.where((v) => v == 1).length;
+
+    if (mounted) {
+      setState(() {
+        oneImplantPatientsMonth = monthCount;
+        oneImplantPatientsYear = yearCount;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(10),
+      margin: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.5),
+            spreadRadius: 5,
+            blurRadius: 7,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Пациентов с ровно одним имплантом за текущий месяц: $oneImplantPatientsMonth',
+            style: TextStyle(fontSize: 16),
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Пациентов с ровно одним имплантом за текущий год: $oneImplantPatientsYear',
             style: TextStyle(fontSize: 16),
           ),
         ],

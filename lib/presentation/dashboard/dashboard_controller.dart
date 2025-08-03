@@ -16,6 +16,10 @@ class DashboardState {
   final AsyncValue<int> implantsMonthCount;
   final AsyncValue<int> implantsYearCount;
 
+  // Новые показатели: пациенты с ровно одним имплантом
+  final AsyncValue<int> oneImplantPatientsMonthCount;
+  final AsyncValue<int> oneImplantPatientsYearCount;
+
   final AsyncValue<int> crownAbutmentMonthCount;
   final AsyncValue<int> crownAbutmentYearCount;
 
@@ -28,6 +32,8 @@ class DashboardState {
     required this.implantsYearCount,
     required this.crownAbutmentMonthCount,
     required this.crownAbutmentYearCount,
+    required this.oneImplantPatientsMonthCount,
+    required this.oneImplantPatientsYearCount,
   });
 
   factory DashboardState.initial() => const DashboardState(
@@ -39,6 +45,8 @@ class DashboardState {
         implantsYearCount: AsyncValue.loading(),
         crownAbutmentMonthCount: AsyncValue.loading(),
         crownAbutmentYearCount: AsyncValue.loading(),
+        oneImplantPatientsMonthCount: AsyncValue.loading(),
+        oneImplantPatientsYearCount: AsyncValue.loading(),
       );
 
   DashboardState copyWith({
@@ -50,6 +58,8 @@ class DashboardState {
     AsyncValue<int>? implantsYearCount,
     AsyncValue<int>? crownAbutmentMonthCount,
     AsyncValue<int>? crownAbutmentYearCount,
+    AsyncValue<int>? oneImplantPatientsMonthCount,
+    AsyncValue<int>? oneImplantPatientsYearCount,
   }) {
     return DashboardState(
       patients: patients ?? this.patients,
@@ -62,6 +72,10 @@ class DashboardState {
           crownAbutmentMonthCount ?? this.crownAbutmentMonthCount,
       crownAbutmentYearCount:
           crownAbutmentYearCount ?? this.crownAbutmentYearCount,
+      oneImplantPatientsMonthCount:
+          oneImplantPatientsMonthCount ?? this.oneImplantPatientsMonthCount,
+      oneImplantPatientsYearCount:
+          oneImplantPatientsYearCount ?? this.oneImplantPatientsYearCount,
     );
   }
 }
@@ -73,6 +87,8 @@ class DashboardController extends StateNotifier<DashboardState> {
   StreamSubscription? _implantsYearSub;
   StreamSubscription? _crownAbMonthSub;
   StreamSubscription? _crownAbYearSub;
+  StreamSubscription? _oneImplantMonthSub;
+  StreamSubscription? _oneImplantYearSub;
 
   DashboardController(this._repo) : super(DashboardState.initial());
 
@@ -119,6 +135,29 @@ class DashboardController extends StateNotifier<DashboardState> {
       state = state.copyWith(implantsYearCount: AsyncValue.error(e, st));
     });
 
+    // Пациенты с ровно 1 имплантом: за месяц/год
+    _oneImplantMonthSub = _repo
+        .watchOneImplantPatientsCountForCurrentMonth()
+        .listen((count) {
+      state = state.copyWith(
+        oneImplantPatientsMonthCount: AsyncValue.data(count),
+      );
+    }, onError: (e, st) {
+      state = state.copyWith(
+          oneImplantPatientsMonthCount: AsyncValue.error(e, st));
+    });
+
+    _oneImplantYearSub = _repo
+        .watchOneImplantPatientsCountForCurrentYear()
+        .listen((count) {
+      state = state.copyWith(
+        oneImplantPatientsYearCount: AsyncValue.data(count),
+      );
+    }, onError: (e, st) {
+      state = state.copyWith(
+          oneImplantPatientsYearCount: AsyncValue.error(e, st));
+    });
+
     // Коронки + Абатменты за месяц/год
     final crownAbTypes = {TreatmentType.crown, TreatmentType.abutment};
     _crownAbMonthSub = _repo
@@ -150,6 +189,8 @@ class DashboardController extends StateNotifier<DashboardState> {
     _implantsYearSub?.cancel();
     _crownAbMonthSub?.cancel();
     _crownAbYearSub?.cancel();
+    _oneImplantMonthSub?.cancel();
+    _oneImplantYearSub?.cancel();
     super.dispose();
   }
 }

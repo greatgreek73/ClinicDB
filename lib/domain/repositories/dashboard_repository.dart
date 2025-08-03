@@ -6,6 +6,12 @@ import '../models/treatment_type.dart';
 /// Контракт репозитория дашборда.
 /// Домашний слой не знает о Firestore — только о доменных моделях.
 abstract class DashboardRepository {
+  /// Кол-во пациентов с ровно одним имплантом за текущий месяц.
+  /// Группировка по patientId внутри периода, сумма длин массивов toothNumber == 1.
+  Stream<int> watchOneImplantPatientsCountForCurrentMonth();
+
+  /// Кол-во пациентов с ровно одним имплантом за текущий год.
+  Stream<int> watchOneImplantPatientsCountForCurrentYear();
   /// Наблюдение за списком пациентов.
   /// Репозиторий преобразует "сырые" данные источника в List<Patient>.
   Stream<List<Patient>> watchPatients();

@@ -10,6 +10,20 @@ class FirebaseDashboardRepository implements DashboardRepository {
 
   FirebaseDashboardRepository(FirebaseFirestore db) : _db = db;
 
+  // Вспомогательная функция: считает пациентов с суммарно ровно 1 имплантом в снапшоте
+  int _countOneImplantPatientsFromSnapshot(QuerySnapshot<Map<String, dynamic>> snap) {
+    final Map<String, int> perPatient = {};
+    for (final doc in snap.docs) {
+      final data = doc.data();
+      final String patientId = (data['patientId'] as String?) ?? '';
+      if (patientId.isEmpty) continue;
+      final List<dynamic> toothNumbersDyn = List.from(data['toothNumber'] ?? []);
+      final int implantsInThisTreatment = toothNumbersDyn.length;
+      perPatient.update(patientId, (v) => v + implantsInThisTreatment, ifAbsent: () => implantsInThisTreatment);
+    }
+    return perPatient.values.where((v) => v == 1).length;
+  }
+
   @override
   Stream<List<Patient>> watchPatients() {
     return _db.collection('patients').snapshots().map((snapshot) {
@@ -43,6 +57,36 @@ class FirebaseDashboardRepository implements DashboardRepository {
     });
 
     return TreatmentCounts.fromIterable(items);
+  }
+
+  @override
+  Stream<int> watchOneImplantPatientsCountForCurrentMonth() {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, 1);
+    final end = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+    final query = _db
+        .collection('treatments')
+        .where('treatmentType', isEqualTo: TreatmentType.implant.asFirestoreString)
+        .where('date', isGreaterThanOrEqualTo: start)
+        .where('date', isLessThanOrEqualTo: end);
+
+    return query.snapshots().map(_countOneImplantPatientsFromSnapshot);
+  }
+
+  @override
+  Stream<int> watchOneImplantPatientsCountForCurrentYear() {
+    final now = DateTime.now();
+    final start = DateTime(now.year, 1, 1);
+    final end = DateTime(now.year, 12, 31, 23, 59, 59);
+
+    final query = _db
+        .collection('treatments')
+        .where('treatmentType', isEqualTo: TreatmentType.implant.asFirestoreString)
+        .where('date', isGreaterThanOrEqualTo: start)
+        .where('date', isLessThanOrEqualTo: end);
+
+    return query.snapshots().map(_countOneImplantPatientsFromSnapshot);
   }
 
   @override

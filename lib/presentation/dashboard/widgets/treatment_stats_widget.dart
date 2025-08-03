@@ -21,6 +21,10 @@ class TreatmentStatsWidget extends ConsumerWidget {
       required AsyncValue<int> year,
       required Key monthKey,
       required Key yearKey,
+      AsyncValue<int>? oneImplantMonth,
+      AsyncValue<int>? oneImplantYear,
+      Key? oneImplantMonthKey,
+      Key? oneImplantYearKey,
     }) {
       return NeoCard(
         child: month.when(
@@ -56,54 +60,122 @@ class TreatmentStatsWidget extends ConsumerWidget {
               ),
             ),
             data: (y) => SizedBox(
-              height: isPortrait ? 150 : null,
-              child: Row(
+              height: isPortrait ? 180 : null,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Левая колонка: заголовок
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: Theme.of(context).textTheme.titleLarge,
+                  // Верхний ряд: заголовок + подпись
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Агрегированные значения по зубам',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: DesignTokens.textSecondary,
+                                  ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Агрегированные значения по зубам',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: DesignTokens.textSecondary,
-                              ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  // Правая колонка: месяц и год
-                  Expanded(
-                    flex: 3,
-                    child: Row(
+                  const SizedBox(height: 12),
+                  // Ряд 1: Месяц/Год (зубы)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _StatBox(
+                          label: 'Месяц',
+                          value: m,
+                          valueKey: monthKey,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _StatBox(
+                          label: 'Год',
+                          value: y,
+                          valueKey: yearKey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Ряд 2: Пациенты с 1 имплантом (если передано)
+                  if (oneImplantMonth != null && oneImplantYear != null) ...[
+                    const SizedBox(height: 10),
+                    Row(
                       children: [
                         Expanded(
-                          child: _StatBox(
-                            label: 'Месяц',
-                            value: m,
-                            valueKey: monthKey,
+                          child: oneImplantMonth.when(
+                            loading: () => NeoCard.inset(
+                              child: const Center(
+                                child: SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                            ),
+                            error: (e, _) => NeoCard.inset(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Text(
+                                  '1 импл. (месяц): —',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: DesignTokens.textSecondary,
+                                      ),
+                                ),
+                              ),
+                            ),
+                            data: (v) => _StatBox(
+                              label: '1 имплант (месяц)',
+                              value: v,
+                              valueKey: oneImplantMonthKey ?? const ValueKey('oneImplantMonth'),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _StatBox(
-                            label: 'Год',
-                            value: y,
-                            valueKey: yearKey,
+                          child: oneImplantYear.when(
+                            loading: () => NeoCard.inset(
+                              child: const Center(
+                                child: SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                            ),
+                            error: (e, _) => NeoCard.inset(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Text(
+                                  '1 импл. (год): —',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: DesignTokens.textSecondary,
+                                      ),
+                                ),
+                              ),
+                            ),
+                            data: (v) => _StatBox(
+                              label: '1 имплант (год)',
+                              value: v,
+                              valueKey: oneImplantYearKey ?? const ValueKey('oneImplantYear'),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -120,6 +192,10 @@ class TreatmentStatsWidget extends ConsumerWidget {
           year: state.implantsYearCount,
           monthKey: const ValueKey('implantsMonth'),
           yearKey: const ValueKey('implantsYear'),
+          oneImplantMonth: state.oneImplantPatientsMonthCount,
+          oneImplantYear: state.oneImplantPatientsYearCount,
+          oneImplantMonthKey: const ValueKey('oneImplantPatientsMonth'),
+          oneImplantYearKey: const ValueKey('oneImplantPatientsYear'),
         ),
         const SizedBox(height: 12),
         buildPanel(

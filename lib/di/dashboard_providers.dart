@@ -52,4 +52,15 @@ class MockDashboardRepository implements DashboardRepository {
   Stream<TreatmentCounts> watchTreatmentCountsForCurrentYear({Set<TreatmentType>? types}) {
     return Stream.value(TreatmentCounts.empty());
   }
+
+  // Новые методы для метрики "пациенты с 1 имплантом"
+  @override
+  Stream<int> watchOneImplantPatientsCountForCurrentMonth() {
+    return Stream.value(0);
+  }
+
+  @override
+  Stream<int> watchOneImplantPatientsCountForCurrentYear() {
+    return Stream.value(0);
+  }
 }
