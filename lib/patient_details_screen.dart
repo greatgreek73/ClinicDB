@@ -81,7 +81,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                             children: [
                               _buildPatientHeaderCard(patientData),
                               const SizedBox(height: 16),
-                              _buildFinancialSummaryCard(patientData),
+                              _buildCompactNotesCard(),
                               const SizedBox(height: 16),
                               _buildPersonalInfoCard(patientData),
                               const SizedBox(height: 16),
@@ -101,13 +101,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                         child: SingleChildScrollView(
                           child: Column(
                             children: [
-                              _buildTreatmentStatsCard(),
+                              _buildFinancialSummaryCard(patientData),
                               const SizedBox(height: 16),
                               _buildTeethSchemaCard(),
                               const SizedBox(height: 16),
-                              _buildAdditionalPhotosCard(patientData),
+                              _buildTreatmentStatsCard(),
                               const SizedBox(height: 16),
-                              _buildNotesCard(),
+                              _buildAdditionalPhotosCard(patientData),
                             ],
                           ),
                         ),
@@ -158,12 +158,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // ФИО - отцентрировано по горизонтали
+                  // ФИО с подчеркиванием - отцентрировано по горизонтали
                   Center(
-                    child: Text(
-                      '${patientData['surname'] ?? ''} ${patientData['name'] ?? ''}'.trim(),
-                      style: DesignTokens.h1.copyWith(fontSize: 24),
-                      textAlign: TextAlign.center,
+                    child: _buildUnderlinedFullName(
+                      patientData['surname'] ?? '',
+                      patientData['name'] ?? '',
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -183,7 +182,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     );
   }
 
-  /// Карточка финансовой сводки
+  /// Карточка финансовой сводки (компактная версия)
   Widget _buildFinancialSummaryCard(Map<String, dynamic> patientData) {
     final paymentsData = patientData['payments'] as List<dynamic>? ?? [];
     final payments = paymentsData.map((p) => Payment.fromMap(p)).toList();
@@ -195,58 +194,39 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                const Text('💰', style: TextStyle(fontSize: 24)),
-                const SizedBox(width: 8),
-                Text('Финансовая сводка', style: DesignTokens.h2),
-              ],
+            // Заголовок с подчеркиванием по центру
+            Center(
+              child: _buildUnderlinedTitle('Оплата', '💰'),
             ),
             const SizedBox(height: 20),
             
-            // Основные финансовые показатели
-            Row(
+            // Вертикальные финансовые показатели с разделителями
+            Column(
               children: [
-                Expanded(
-                  child: _buildFinancialMetric(
-                    'Общая стоимость',
-                    '${priceFormatter.format(price)} ₽',
-                    DesignTokens.accentPrimary,
-                  ),
+                _buildCompactFinancialItem(
+                  '${priceFormatter.format(price)} ₽',
+                  Icons.account_balance_wallet_outlined,
+                  DesignTokens.accentPrimary,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildFinancialMetric(
-                    'Оплачено',
+                _buildFinancialDivider(),
+                GestureDetector(
+                  onTap: () => _showPaymentHistoryDialog(context, payments),
+                  child: _buildCompactFinancialItem(
                     '${priceFormatter.format(totalPaid)} ₽',
+                    Icons.credit_card_outlined,
                     DesignTokens.accentSuccess,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildFinancialMetric(
-                    'К доплате',
-                    '${priceFormatter.format(remain)} ₽',
-                    remain > 0 ? DesignTokens.accentWarning : DesignTokens.accentSuccess,
-                  ),
+                _buildFinancialDivider(),
+                _buildCompactFinancialItem(
+                  '${priceFormatter.format(remain)} ₽',
+                  Icons.schedule_outlined,
+                  remain > 0 ? DesignTokens.accentWarning : DesignTokens.accentSuccess,
                 ),
               ],
             ),
-            
-            if (payments.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  const Text('💳', style: TextStyle(fontSize: 20)),
-                  const SizedBox(width: 8),
-                  Text('История платежей', style: DesignTokens.h4),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _buildPaymentsHistory(payments),
-            ],
           ],
         ),
       ),
@@ -440,7 +420,171 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     );
   }
 
-  /// Карточка статистики лечения
+  /// Компактная карточка заметок с кликабельным действием
+  Widget _buildCompactNotesCard() {
+    return FutureBuilder<String>(
+      future: _getPatientNotes(),
+      builder: (context, snapshot) {
+        final notes = snapshot.data ?? '';
+        final hasNotes = notes.trim().isNotEmpty;
+        
+        return NeoCard(
+          child: InkWell(
+            onTap: () => _showNotesDialog(context, notes),
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        hasNotes ? Icons.note_alt : Icons.note_add_outlined,
+                        size: 24,
+                        color: hasNotes ? DesignTokens.accentPrimary : DesignTokens.textMuted,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Заметки',
+                        style: DesignTokens.h2.copyWith(
+                          color: hasNotes ? DesignTokens.textPrimary : DesignTokens.textMuted,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        Icons.open_in_new,
+                        size: 16,
+                        color: DesignTokens.textSecondary,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: hasNotes 
+                          ? DesignTokens.background.withOpacity(0.5)
+                          : DesignTokens.background.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: hasNotes 
+                            ? DesignTokens.accentPrimary.withOpacity(0.2)
+                            : DesignTokens.shadowDark.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: hasNotes
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getNotesPreview(notes),
+                                style: DesignTokens.body.copyWith(
+                                  height: 1.4,
+                                ),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (notes.length > 100) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Нажмите для просмотра полного текста',
+                                  style: DesignTokens.small.copyWith(
+                                    color: DesignTokens.accentPrimary,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          )
+                        : Center(
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.note_add_outlined,
+                                  size: 32,
+                                  color: DesignTokens.textMuted,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Нет заметок',
+                                  style: DesignTokens.body.copyWith(
+                                    color: DesignTokens.textMuted,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Нажмите для добавления',
+                                  style: DesignTokens.small.copyWith(
+                                    color: DesignTokens.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Получить заметки пациента из Firebase
+  Future<String> _getPatientNotes() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('patients')
+          .doc(widget.patientId)
+          .get();
+      
+      if (doc.exists && doc.data() != null) {
+        return doc.data()!['notes'] ?? '';
+      }
+      return '';
+    } catch (e) {
+      print('Ошибка получения заметок: $e');
+      return '';
+    }
+  }
+
+  /// Получить краткое превью заметок
+  String _getNotesPreview(String notes) {
+    if (notes.length <= 100) {
+      return notes;
+    }
+    return '${notes.substring(0, 100)}...';
+  }
+
+  /// Модальное окно с заметками
+  void _showNotesDialog(BuildContext context, String initialNotes) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AnimatedScale(
+          scale: 1.0,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutBack,
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            child: NotesDialogContent(
+              patientId: widget.patientId,
+              initialNotes: initialNotes,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Карточка статистики лечения (список)
   Widget _buildTreatmentStatsCard() {
     return NeoCard(
       child: Padding(
@@ -456,14 +600,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
               ],
             ),
             const SizedBox(height: 20),
-            _buildTreatmentStatsGrid(),
+            _buildTreatmentStatsList(),
           ],
         ),
       ),
     );
   }
-
-  /// Карточка схемы зубов
   Widget _buildTeethSchemaCard() {
     return NeoCard(
       child: Padding(
@@ -543,6 +685,167 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
 
   // === ВСПОМОГАТЕЛЬНЫЕ ВИДЖЕТЫ ===
 
+  /// Компактный финансовый элемент (только иконка и черные цифры)
+  Widget _buildCompactFinancialItem(String value, IconData icon, Color iconColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(
+            icon, 
+            size: 18, 
+            color: iconColor, // Иконки остаются цветными
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              style: DesignTokens.body.copyWith(
+                color: DesignTokens.textPrimary, // Черный цвет для сумм
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Разделитель между элементами финансовой сводки
+  Widget _buildFinancialDivider() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      height: 1,
+      color: DesignTokens.shadowDark.withOpacity(0.2),
+    );
+  }
+
+  /// Подчеркнутый заголовок с иконкой
+  Widget _buildUnderlinedTitle(String title, String emoji) {
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 8),
+            Text(title, style: DesignTokens.h2),
+          ],
+        ),
+        const SizedBox(height: 8),
+        
+        // Первая (длинная) линия
+        Container(
+          width: title.length * 12.0, // Примерная длина по длине текста
+          height: 2,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                DesignTokens.accentPrimary.withOpacity(0.8),
+                DesignTokens.accentPrimary.withOpacity(0.4),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(1),
+            boxShadow: [
+              BoxShadow(
+                color: DesignTokens.accentPrimary.withOpacity(0.2),
+                blurRadius: 3,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 3),
+        
+        // Вторая (короткая) линия
+        Container(
+          width: (title.length * 12.0) * 0.7, // 70% от длины первой линии
+          height: 1,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                DesignTokens.accentPrimary.withOpacity(0.6),
+                DesignTokens.accentPrimary.withOpacity(0.2),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(0.5),
+            boxShadow: [
+              BoxShadow(
+                color: DesignTokens.accentPrimary.withOpacity(0.1),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Подчеркнутое ФИО в стиле классического двойного подчеркивания
+  Widget _buildUnderlinedFullName(String surname, String name) {
+    final fullName = '$surname $name'.trim();
+    
+    return Column(
+      children: [
+        Text(
+          fullName,
+          style: DesignTokens.h1.copyWith(fontSize: 24),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        
+        // Первая (длинная) линия
+        Container(
+          width: fullName.length * 9.0, // Примерная длина по длине текста
+          height: 2,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                DesignTokens.accentPrimary.withOpacity(0.8),
+                DesignTokens.accentPrimary.withOpacity(0.4),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(1),
+            boxShadow: [
+              BoxShadow(
+                color: DesignTokens.accentPrimary.withOpacity(0.2),
+                blurRadius: 3,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 3),
+        
+        // Вторая (короткая) линия
+        Container(
+          width: (fullName.length * 9.0) * 0.7, // 70% от длины первой линии
+          height: 1,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                DesignTokens.accentPrimary.withOpacity(0.6),
+                DesignTokens.accentPrimary.withOpacity(0.2),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(0.5),
+            boxShadow: [
+              BoxShadow(
+                color: DesignTokens.accentPrimary.withOpacity(0.1),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPatientAvatar(String? photoUrl, {Map<String, dynamic>? patientData}) {
     // Определяем цвет ободка в зависимости от статуса пациента
     Color borderColor = DesignTokens.accentPrimary;
@@ -557,27 +860,27 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     }
     
     return Container(
-      width: 80,
-      height: 80,
+      width: 120,
+      height: 120,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
           color: borderColor,
-          width: 2,
+          width: 3,
         ),
         boxShadow: [
           BoxShadow(
-            color: borderColor.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: borderColor.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(40),
+        borderRadius: BorderRadius.circular(60),
         child: Container(
-          width: 76,
-          height: 76,
+          width: 114,
+          height: 114,
           color: DesignTokens.surface,
           child: photoUrl != null
               ? Image.network(
@@ -585,12 +888,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return const Center(
-                      child: Text('👤', style: TextStyle(fontSize: 28)),
+                      child: Text('👤', style: TextStyle(fontSize: 42)),
                     );
                   },
                 )
               : const Center(
-                  child: Text('👤', style: TextStyle(fontSize: 28)),
+                  child: Text('👤', style: TextStyle(fontSize: 42)),
                 ),
         ),
       ),
@@ -935,52 +1238,257 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     );
   }
 
-  Widget _buildPaymentsHistory(List<Payment> payments) {
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 200),
-      child: SingleChildScrollView(
-        child: Column(
-          children: payments.map((payment) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: NeoCard.inset(
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: DesignTokens.accentSuccess,
-                          borderRadius: BorderRadius.circular(4),
+  /// Модальное окно с историей платежей (без размытия)
+  void _showPaymentHistoryDialog(BuildContext context, List<Payment> payments) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AnimatedScale(
+          scale: 1.0,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutBack,
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              width: 600,
+              height: 700,
+              decoration: BoxDecoration(
+                color: DesignTokens.background,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: DesignTokens.shadowDark.withOpacity(0.15),
+                    blurRadius: 8, // Уменьшено с 20 до 8
+                    offset: const Offset(0, 4), // Уменьшено с 10 до 4
+                  ),
+                  BoxShadow(
+                    color: DesignTokens.shadowLight,
+                    blurRadius: 8, // Уменьшено с 20 до 8
+                    offset: const Offset(0, -4), // Уменьшено с -10 до -4
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    // Заголовок
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: DesignTokens.accentSuccess.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(
+                            Icons.payment,
+                            color: DesignTokens.accentSuccess,
+                            size: 24,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          '${priceFormatter.format(payment.amount)} ₽',
-                          style: DesignTokens.body.copyWith(fontWeight: FontWeight.w600),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'История платежей',
+                                style: DesignTokens.h2,
+                              ),
+                              Text(
+                                'Всего платежей: ${payments.length}',
+                                style: DesignTokens.small.copyWith(
+                                  color: DesignTokens.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Text(
-                        DateFormat('dd.MM.yyyy').format(payment.date),
-                        style: DesignTokens.small.copyWith(
-                          color: DesignTokens.textSecondary,
+                        NeoButton(
+                          label: 'Закрыть',
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Список платежей
+                    Expanded(
+                      child: payments.isEmpty
+                          ? NeoCard.inset(
+                              child: Container(
+                                height: double.infinity,
+                                child: const Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.payment_outlined,
+                                        size: 64,
+                                        color: DesignTokens.textMuted,
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'Нет платежей',
+                                        style: TextStyle(
+                                          color: DesignTokens.textMuted,
+                                          fontSize: 18,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: payments.length,
+                              itemBuilder: (context, index) {
+                                final payment = payments[payments.length - 1 - index]; // Обратный порядок
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  child: NeoCard.inset(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 12,
+                                            height: 12,
+                                            decoration: BoxDecoration(
+                                              color: DesignTokens.accentSuccess,
+                                              borderRadius: BorderRadius.circular(6),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: DesignTokens.accentSuccess.withOpacity(0.3),
+                                                  blurRadius: 4,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  '${priceFormatter.format(payment.amount)} ₽',
+                                                  style: DesignTokens.h3.copyWith(
+                                                    color: DesignTokens.accentSuccess,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  'Платеж №${index + 1}',
+                                                  style: DesignTokens.small.copyWith(
+                                                    color: DesignTokens.textSecondary,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            children: [
+                                              Text(
+                                                DateFormat('dd.MM.yyyy').format(payment.date),
+                                                style: DesignTokens.body.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                DateFormat('HH:mm').format(payment.date),
+                                                style: DesignTokens.small.copyWith(
+                                                  color: DesignTokens.textSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                    
+                    // Итоговая статистика
+                    if (payments.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      NeoCard(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'Общая сумма',
+                                      style: DesignTokens.small.copyWith(
+                                        color: DesignTokens.textSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${priceFormatter.format(payments.fold<double>(0, (sum, p) => sum + p.amount))} ₽',
+                                      style: DesignTokens.h3.copyWith(
+                                        color: DesignTokens.accentSuccess,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                height: 40,
+                                color: DesignTokens.shadowDark.withOpacity(0.2),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'Средний платеж',
+                                      style: DesignTokens.small.copyWith(
+                                        color: DesignTokens.textSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${priceFormatter.format(payments.fold<double>(0, (sum, p) => sum + p.amount) / payments.length)} ₽',
+                                      style: DesignTokens.h4.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
               ),
-            );
-          }).toList(),
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildTreatmentStatsGrid() {
+  Widget _buildTreatmentStatsList() {
     return FutureBuilder<Map<String, int>>(
       future: _getTreatmentCounts(widget.patientId),
       builder: (context, snapshot) {
@@ -991,64 +1499,110 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
           return Text('Ошибка: ${snapshot.error}');
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Text('Нет данных о лечении');
+          return const NeoCard.inset(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Center(
+                child: Text(
+                  'Нет данных о лечении',
+                  style: TextStyle(
+                    color: DesignTokens.textMuted,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ),
+          );
         }
 
         final treatments = snapshot.data!;
         final sortedTreatments = treatments.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
         
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 1.2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+        return Container(
+          constraints: const BoxConstraints(maxHeight: 400),
+          child: ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: sortedTreatments.length,
+            itemBuilder: (context, index) {
+              final treatment = sortedTreatments[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: _buildTreatmentStatListItem(treatment.key, treatment.value),
+              );
+            },
           ),
-          itemCount: sortedTreatments.length.clamp(0, 6), // Показываем максимум 6
-          itemBuilder: (context, index) {
-            final treatment = sortedTreatments[index];
-            return _buildTreatmentStatCard(treatment.key, treatment.value);
-          },
         );
       },
     );
   }
 
-  Widget _buildTreatmentStatCard(String treatmentType, int count) {
+  Widget _buildTreatmentStatListItem(String treatmentType, int count) {
     final icon = _getTreatmentIcon(treatmentType);
     final color = _getColor(treatmentType);
     
     return NeoCard.inset(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
           children: [
-            Text(
-              icon,
-              style: const TextStyle(fontSize: 24),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              count.toString(),
-              style: DesignTokens.h2.copyWith(
-                color: color,
-                fontWeight: FontWeight.w700,
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: color.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  icon,
+                  style: const TextStyle(fontSize: 18),
+                ),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              treatmentType,
-              style: DesignTokens.small.copyWith(
-                color: DesignTokens.textSecondary,
-                fontWeight: FontWeight.w500,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    treatmentType,
+                    style: DesignTokens.body.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Количество процедур',
+                    style: DesignTokens.small.copyWith(
+                      color: DesignTokens.textSecondary,
+                    ),
+                  ),
+                ],
               ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: color.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                count.toString(),
+                style: DesignTokens.h4.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ],
         ),
@@ -1675,5 +2229,363 @@ class TreatmentSelectionScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Содержимое модального окна заметок с режимами просмотра и редактирования
+class NotesDialogContent extends StatefulWidget {
+  final String patientId;
+  final String initialNotes;
+
+  const NotesDialogContent({
+    super.key,
+    required this.patientId,
+    required this.initialNotes,
+  });
+
+  @override
+  _NotesDialogContentState createState() => _NotesDialogContentState();
+}
+
+class _NotesDialogContentState extends State<NotesDialogContent> {
+  late TextEditingController _notesController;
+  bool _isEditing = false;
+  bool _isLoading = false;
+  bool _hasChanges = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _notesController = TextEditingController(text: widget.initialNotes);
+    _notesController.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    _notesController.removeListener(_onTextChanged);
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    if (!_hasChanges && _notesController.text != widget.initialNotes) {
+      setState(() {
+        _hasChanges = true;
+      });
+    }
+  }
+
+  Future<void> _saveNotes() async {
+    if (!_hasChanges) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('patients')
+          .doc(widget.patientId)
+          .update({'notes': _notesController.text});
+      
+      setState(() {
+        _isEditing = false;
+        _isLoading = false;
+        _hasChanges = false;
+      });
+      
+      _showSuccessSnackBar('Заметки сохранены');
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorSnackBar('Ошибка при сохранении: $e');
+    }
+  }
+
+  void _cancelEditing() {
+    setState(() {
+      _isEditing = false;
+      _hasChanges = false;
+      _notesController.text = widget.initialNotes;
+    });
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(message),
+          ],
+        ),
+        backgroundColor: DesignTokens.accentSuccess,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: DesignTokens.accentDanger,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasNotes = widget.initialNotes.trim().isNotEmpty;
+    
+    return Container(
+      width: 600,
+      height: 700,
+      decoration: BoxDecoration(
+        color: DesignTokens.background,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: DesignTokens.shadowDark.withOpacity(0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: DesignTokens.shadowLight,
+            blurRadius: 8,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            // Заголовок
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: hasNotes 
+                        ? DesignTokens.accentPrimary.withOpacity(0.2)
+                        : DesignTokens.textMuted.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(
+                    hasNotes ? Icons.note_alt : Icons.note_add_outlined,
+                    color: hasNotes ? DesignTokens.accentPrimary : DesignTokens.textMuted,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Заметки о пациенте',
+                        style: DesignTokens.h2,
+                      ),
+                      Text(
+                        _isEditing ? 'Режим редактирования' : 'Режим просмотра',
+                        style: DesignTokens.small.copyWith(
+                          color: _isEditing ? DesignTokens.accentPrimary : DesignTokens.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                NeoButton(
+                  label: 'Закрыть',
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            
+            // Область заметок
+            Expanded(
+              child: NeoCard.inset(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: _isEditing ? _buildEditingView() : _buildReadonlyView(),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Кнопки управления
+            _buildControlButtons(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReadonlyView() {
+    final notesText = _notesController.text.trim();
+    
+    if (notesText.isEmpty) {
+      return Container(
+        width: double.infinity,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.note_add_outlined,
+              size: 64,
+              color: DesignTokens.textMuted,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Нет заметок о пациенте',
+              style: DesignTokens.h3.copyWith(
+                color: DesignTokens.textMuted,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Нажмите "Редактировать" чтобы добавить заметки',
+              style: DesignTokens.body.copyWith(
+                color: DesignTokens.textMuted,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      child: Container(
+        width: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              notesText,
+              style: DesignTokens.body.copyWith(
+                height: 1.6,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditingView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_hasChanges)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: DesignTokens.accentWarning.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.edit,
+                  size: 16,
+                  color: DesignTokens.accentWarning,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Есть несохраненные изменения',
+                  style: DesignTokens.small.copyWith(
+                    color: DesignTokens.accentWarning,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (_hasChanges) const SizedBox(height: 12),
+        
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _hasChanges 
+                    ? DesignTokens.accentPrimary.withOpacity(0.3)
+                    : DesignTokens.shadowDark.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: TextField(
+              controller: _notesController,
+              maxLines: null,
+              expands: true,
+              style: DesignTokens.body.copyWith(fontSize: 16),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.all(16),
+                hintText: 'Введите заметки о пациенте...\n\nМожете указать:\n• Особенности лечения\n• Предпочтения пациента\n• Аллергии или противопоказания\n• Важные замечания',
+                hintStyle: DesignTokens.body.copyWith(
+                  color: DesignTokens.textMuted,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildControlButtons() {
+    if (_isEditing) {
+      return Row(
+        children: [
+          Expanded(
+            child: NeoButton(
+              label: 'Отмена',
+              onPressed: _isLoading ? null : _cancelEditing,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: NeoButton(
+              label: _isLoading ? 'Сохранение...' : 'Сохранить',
+              primary: true,
+              onPressed: (_isLoading || !_hasChanges) ? null : _saveNotes,
+            ),
+          ),
+        ],
+      );
+    } else {
+      return SizedBox(
+        width: double.infinity,
+        child: NeoButton(
+          label: 'Редактировать заметки',
+          primary: true,
+          onPressed: _isLoading ? null : () {
+            setState(() {
+              _isEditing = true;
+            });
+          },
+        ),
+      );
+    }
   }
 }
