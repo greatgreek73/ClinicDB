@@ -199,7 +199,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
       ),
       child: Column(
         children: [
-          // Аватар пациента вверху
+          // Аватар пациента вверху (вернули на место)
           Container(
             padding: const EdgeInsets.all(12),
             child: _buildCompactAvatar(patientData['photoUrl'], patientData: patientData),
@@ -230,11 +230,18 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
           // Кнопка выхода/назад внизу
           Container(
             padding: const EdgeInsets.all(12),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              color: DesignTokens.textSecondary,
-              onPressed: () => Navigator.of(context).pop(),
-              tooltip: 'Назад',
+            child: Container(
+              decoration: BoxDecoration(
+                color: DesignTokens.background.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                iconSize: 20,
+                color: DesignTokens.textSecondary,
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'Назад',
+              ),
             ),
           ),
         ],
@@ -352,95 +359,493 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
   /// Постоянный заголовок пациента
   Widget _buildPatientHeader(Map<String, dynamic> patientData) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      height: 160, // Увеличенная высота для размещения всей информации
       decoration: BoxDecoration(
-        color: DesignTokens.background,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            DesignTokens.background,
+            DesignTokens.surface.withOpacity(0.8),
+          ],
+        ),
         boxShadow: [
           BoxShadow(
-            color: DesignTokens.shadowDark.withOpacity(0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
+            color: DesignTokens.shadowDark.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: DesignTokens.shadowLight,
+            blurRadius: 10,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          // ФИО и основная информация
-          Expanded(
+          // Верхняя часть с ФИО, личной информацией и статусами
+          Container(
+            padding: const EdgeInsets.only(top: 20, left: 30, right: 30, bottom: 10),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      '${patientData['surname'] ?? ''} ${patientData['name'] ?? ''}'.trim(),
-                      style: DesignTokens.h2,
-                    ),
-                    const SizedBox(width: 16),
-                    // Статусные бэйджи
-                    if (patientData['hotPatient'] == true)
-                      _buildMiniStatusBadge('🔥 Горящий', DesignTokens.accentDanger),
-                    if (patientData['secondStage'] == true)
-                      _buildMiniStatusBadge('2️⃣ Второй этап', DesignTokens.accentSuccess),
-                    if (patientData['waitingList'] == true)
-                      _buildMiniStatusBadge('⏳ Ожидание', DesignTokens.accentWarning),
-                    if (patientData['treatmentFinished'] == true)
-                      _buildMiniStatusBadge('✅ Окончено', DesignTokens.accentSuccess),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _buildHeaderInfo(Icons.cake, '${patientData['age'] ?? '—'} лет'),
-                    const SizedBox(width: 20),
-                    _buildHeaderInfo(Icons.phone, patientData['phone'] ?? 'Не указан'),
-                    const SizedBox(width: 20),
-                    _buildHeaderInfo(Icons.location_city, patientData['city'] ?? 'Не указан'),
-                    const SizedBox(width: 20),
-                    FutureBuilder<String>(
-                      future: _getLastVisitDate(),
-                      builder: (context, snapshot) {
-                        return _buildHeaderInfo(
-                          Icons.schedule, 
-                          'Последний визит: ${snapshot.data ?? 'Загрузка...'}',
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                // ФИО с подчеркиванием по центру
+                _buildCenteredPatientName(patientData),
+                const SizedBox(height: 16),
+                // Личная информация в простом формате
+                _buildSimplePersonalInfo(patientData),
+                const SizedBox(height: 12),
+                // Статусные бэйджи по центру
+                _buildCenteredStatusBadges(patientData),
               ],
             ),
           ),
           
-          // Контекстные действия (меняются в зависимости от раздела)
-          _buildContextActions(patientData),
+          // Разделитель
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 30),
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  DesignTokens.shadowDark.withOpacity(0.1),
+                  DesignTokens.shadowDark.withOpacity(0.1),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+          
+          // Нижняя часть с информацией и действиями
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+              child: Row(
+                children: [
+                  // Личная информация
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildHeaderInfoCard(
+                          Icons.cake_outlined, 
+                          'Возраст', 
+                          '${patientData['age'] ?? '—'} лет',
+                          color: DesignTokens.accentPrimary,
+                        ),
+                        const SizedBox(width: 16),
+                        _buildHeaderInfoCard(
+                          patientData['gender'] == 'Мужчина' 
+                              ? Icons.male_outlined 
+                              : patientData['gender'] == 'Женщина' 
+                                  ? Icons.female_outlined 
+                                  : Icons.person_outline,
+                          'Пол', 
+                          patientData['gender'] ?? 'Не указан',
+                          color: DesignTokens.accentSecondary,
+                        ),
+                        const SizedBox(width: 16),
+                        _buildHeaderInfoCard(
+                          Icons.phone_outlined, 
+                          'Телефон', 
+                          _formatPhone(patientData['phone'] ?? 'Не указан'),
+                          color: DesignTokens.accentSuccess,
+                        ),
+                        const SizedBox(width: 16),
+                        _buildHeaderInfoCard(
+                          Icons.location_city_outlined, 
+                          'Город', 
+                          patientData['city'] ?? 'Не указан',
+                          color: DesignTokens.accentWarning,
+                        ),
+                        const SizedBox(width: 16),
+                        FutureBuilder<String>(
+                          future: _getLastVisitDate(),
+                          builder: (context, snapshot) {
+                            return _buildHeaderInfoCard(
+                              Icons.schedule_outlined,
+                              'Последний визит',
+                              snapshot.data ?? 'Загрузка...',
+                              color: DesignTokens.accentPrimary,
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 16),
+                        _buildHeaderFinanceCard(patientData),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(width: 30),
+                  
+                  // Контекстные действия
+                  _buildContextActions(patientData),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  /// Мини-бэйдж статуса в заголовке
-  Widget _buildMiniStatusBadge(String text, Color color) {
+  /// ФИО по центру с двойным подчеркиванием
+  Widget _buildCenteredPatientName(Map<String, dynamic> patientData) {
+    final surname = patientData['surname'] ?? '';
+    final name = patientData['name'] ?? '';
+    final fullName = '$surname $name'.trim();
+    
+    return Column(
+      children: [
+        Text(
+          fullName.isEmpty ? 'Пациент' : fullName,
+          style: DesignTokens.h1.copyWith(
+            fontSize: 32,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        
+        // Двойное подчеркивание
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            // Первая (длинная) линия
+            Container(
+              width: fullName.length * 14.0,
+              constraints: const BoxConstraints(maxWidth: 400),
+              height: 3,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    DesignTokens.accentPrimary.withOpacity(0.8),
+                    DesignTokens.accentPrimary.withOpacity(0.8),
+                    Colors.transparent,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: DesignTokens.accentPrimary.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Вторая (короткая) линия
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Container(
+                width: fullName.length * 10.0,
+                constraints: const BoxConstraints(maxWidth: 280),
+                height: 2,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      DesignTokens.accentPrimary.withOpacity(0.5),
+                      DesignTokens.accentPrimary.withOpacity(0.5),
+                      Colors.transparent,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: DesignTokens.accentPrimary.withOpacity(0.2),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Статусные бэйджи по центру
+  Widget _buildCenteredStatusBadges(Map<String, dynamic> patientData) {
+    final badges = <Widget>[];
+    
+    if (patientData['hotPatient'] == true) {
+      badges.add(_buildStatusBadge('🔥 Горящий пациент', DesignTokens.accentDanger));
+    }
+    if (patientData['secondStage'] == true) {
+      badges.add(_buildStatusBadge('2️⃣ Второй этап', DesignTokens.accentSuccess));
+    }
+    if (patientData['waitingList'] == true) {
+      badges.add(_buildStatusBadge('⏳ Список ожидания', DesignTokens.accentWarning));
+    }
+    if (patientData['treatmentFinished'] == true) {
+      badges.add(_buildStatusBadge('✅ Лечение окончено', DesignTokens.accentSuccess));
+    }
+    
+    if (badges.isEmpty) {
+      return const SizedBox(height: 20); // Пустое место, если нет статусов
+    }
+    
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 12,
+      runSpacing: 8,
+      children: badges,
+    );
+  }
+  
+  /// Бэйдж статуса
+  Widget _buildStatusBadge(String text, Color color) {
     return Container(
-      margin: const EdgeInsets.only(left: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
         color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: FontWeight.w600,
           color: color,
+          letterSpacing: 0.3,
         ),
       ),
     );
   }
+  
+  /// Мини-бэйдж статуса в заголовке (оставляем для совместимости)
+  Widget _buildMiniStatusBadge(String text, Color color) {
+    return _buildStatusBadge(text, color);
+  }
+  
+  /// Простая личная информация для верхней части заголовка
+  Widget _buildSimplePersonalInfo(Map<String, dynamic> patientData) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Возраст
+        Row(
+          children: [
+            Icon(
+              Icons.cake_outlined,
+              size: 16,
+              color: DesignTokens.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '${patientData['age'] ?? '—'} лет',
+              style: DesignTokens.body.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 24),
+        
+        // Пол
+        Row(
+          children: [
+            Icon(
+              patientData['gender'] == 'Мужчина' 
+                  ? Icons.male_outlined 
+                  : patientData['gender'] == 'Женщина' 
+                      ? Icons.female_outlined 
+                      : Icons.person_outline,
+              size: 16,
+              color: DesignTokens.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              patientData['gender'] ?? 'Не указан',
+              style: DesignTokens.body.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 24),
+        
+        // Город
+        Row(
+          children: [
+            Icon(
+              Icons.location_city_outlined,
+              size: 16,
+              color: DesignTokens.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              patientData['city'] ?? 'Не указан',
+              style: DesignTokens.body.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 24),
+        
+        // Телефон
+        Row(
+          children: [
+            Icon(
+              Icons.phone_outlined,
+              size: 16,
+              color: DesignTokens.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _formatPhone(patientData['phone'] ?? 'Не указан'),
+              style: DesignTokens.body.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
-  /// Элемент информации в заголовке
+  /// Карточка информации в заголовке
+  Widget _buildHeaderInfoCard(IconData icon, String label, String value, {Color? color}) {
+    final cardColor = color ?? DesignTokens.accentPrimary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      constraints: const BoxConstraints(minWidth: 100),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            DesignTokens.surface,
+            DesignTokens.surface.withOpacity(0.95),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: cardColor.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: cardColor.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+          BoxShadow(
+            color: DesignTokens.shadowLight,
+            blurRadius: 6,
+            offset: const Offset(-2, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 22,
+            color: cardColor.withOpacity(0.8),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: DesignTokens.textSecondary,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              color: DesignTokens.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Карточка финансовой информации в заголовке
+  Widget _buildHeaderFinanceCard(Map<String, dynamic> patientData) {
+    final paymentsData = patientData['payments'] as List<dynamic>? ?? [];
+    final payments = paymentsData.map((p) => Payment.fromMap(p)).toList();
+    final totalPaid = payments.fold<double>(0, (sum, p) => sum + p.amount);
+    final price = (patientData['price'] ?? 0) as num;
+    final remain = price - totalPaid;
+    
+    // Определяем цвет в зависимости от остатка
+    Color financeColor;
+    IconData financeIcon;
+    String financeLabel;
+    String financeValue;
+    
+    if (remain > 0) {
+      financeColor = DesignTokens.accentDanger;
+      financeIcon = Icons.payment_outlined;
+      financeLabel = 'Остаток';
+      financeValue = '${priceFormatter.format(remain)} ₽';
+    } else {
+      financeColor = DesignTokens.accentSuccess;
+      financeIcon = Icons.check_circle_outline;
+      financeLabel = 'Оплачено';
+      financeValue = 'Полностью';
+    }
+    
+    return _buildHeaderInfoCard(
+      financeIcon,
+      financeLabel,
+      financeValue,
+      color: financeColor,
+    );
+  }
+  
+  /// Форматирование телефона
+  String _formatPhone(String phone) {
+    if (phone == 'Не указан' || phone.isEmpty) {
+      return 'Не указан';
+    }
+    
+    // Удаляем все не-цифры
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    
+    // Если это российский номер
+    if (digits.length == 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
+      return '+7 (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7, 9)}-${digits.substring(9)}';
+    }
+    
+    // Если это 10-значный номер без кода страны
+    if (digits.length == 10) {
+      return '+7 (${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6, 8)}-${digits.substring(8)}';
+    }
+    
+    // Возвращаем как есть
+    return phone;
+  }
+  
+  /// Элемент информации в заголовке (старый метод для совместимости)
   Widget _buildHeaderInfo(IconData icon, String text) {
     return Row(
       children: [
@@ -544,6 +949,24 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
       child: SingleChildScrollView(
         child: Column(
           children: [
+            // Схема зубов в самом верху
+            NeoCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text('🦷', style: TextStyle(fontSize: 24)),
+                      const SizedBox(width: 8),
+                      Text('Схема зубов', style: DesignTokens.h3),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTreatmentSchemas(widget.patientId),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             // Основная информация в сетке
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -600,58 +1023,44 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
     return Container(
       key: key,
       padding: const EdgeInsets.all(20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          // История лечения
+          // Фильтры для истории лечения
+          _buildTreatmentFilters(),
+          const SizedBox(height: 16),
+          // История лечения на всю ширину
           Expanded(
-            flex: 2,
-            child: Column(
-              children: [
-                NeoCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text('🦷', style: TextStyle(fontSize: 24)),
-                          const SizedBox(width: 8),
-                          Text('История лечения', style: DesignTokens.h3),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Expanded(
-                        child: _buildTreatmentsSection(widget.patientId),
-                      ),
-                    ],
+            child: NeoCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Text('📋', style: TextStyle(fontSize: 24)),
+                            const SizedBox(width: 8),
+                            Text('История лечения', style: DesignTokens.h3),
+                          ],
+                        ),
+                        Text(
+                          'Timeline',
+                          style: DesignTokens.small.copyWith(
+                            color: DesignTokens.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Схемы зубов
-          SizedBox(
-            width: 400,
-            child: Column(
-              children: [
-                NeoCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text('🦷', style: TextStyle(fontSize: 24)),
-                          const SizedBox(width: 8),
-                          Text('Схема зубов', style: DesignTokens.h3),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      _buildTreatmentSchemas(widget.patientId),
-                    ],
+                  const Divider(height: 1),
+                  Expanded(
+                    child: _buildTimelineTreatments(widget.patientId),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -1735,6 +2144,323 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
     );
   }
 
+  /// Фильтры для истории лечения
+  Widget _buildTreatmentFilters() {
+    return Container(
+      height: 50,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _buildFilterChip('Все', true),
+          const SizedBox(width: 8),
+          _buildFilterChip('🦷 Кариес', false),
+          const SizedBox(width: 8),
+          _buildFilterChip('🔩 Имплантация', false),
+          const SizedBox(width: 8),
+          _buildFilterChip('🗑️ Удаление', false),
+          const SizedBox(width: 8),
+          _buildFilterChip('📷 Сканирование', false),
+          const SizedBox(width: 8),
+          _buildFilterChip('🔬 Эндо', false),
+          const SizedBox(width: 8),
+          _buildFilterChip('👑 Коронка', false),
+        ],
+      ),
+    );
+  }
+  
+  /// Один фильтр
+  Widget _buildFilterChip(String label, bool isSelected) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? DesignTokens.accentPrimary : DesignTokens.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: isSelected 
+            ? [
+                BoxShadow(
+                  color: DesignTokens.accentPrimary.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : DesignTokens.outerShadows(blur: 6, offset: 3),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? Colors.white : DesignTokens.textPrimary,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+        ),
+      ),
+    );
+  }
+  
+  /// ВАРИАНТ 1: Timeline с вертикальной линией (как на скриншоте)
+  Widget _buildTimelineTreatments(String patientId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('treatments')
+          .where('patientId', isEqualTo: patientId)
+          .orderBy('date', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Ошибка загрузки: ${snapshot.error}'),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.medical_services_outlined,
+                  size: 64,
+                  color: DesignTokens.textMuted,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Нет данных о лечении',
+                  style: DesignTokens.body.copyWith(
+                    color: DesignTokens.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        var treatments = _groupTreatmentsByDate(snapshot.data!.docs);
+        
+        return ListView.builder(
+          padding: const EdgeInsets.all(20),
+          itemCount: treatments.keys.length,
+          itemBuilder: (context, index) {
+            DateTime date = treatments.keys.elementAt(index);
+            var treatmentInfos = treatments[date]!;
+            final isExpanded = index == 0; // Первый элемент раскрыт
+            
+            return _buildTimelineItem(
+              date: date,
+              treatments: treatmentInfos,
+              isFirst: index == 0,
+              isLast: index == treatments.keys.length - 1,
+              isExpanded: isExpanded,
+            );
+          },
+        );
+      },
+    );
+  }
+  
+  /// Элемент timeline
+  Widget _buildTimelineItem({
+    required DateTime date,
+    required List<TreatmentInfo> treatments,
+    required bool isFirst,
+    required bool isLast,
+    required bool isExpanded,
+  }) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Левая часть с линией и точкой
+          Container(
+            width: 60,
+            child: Column(
+              children: [
+                // Линия сверху
+                if (!isFirst)
+                  Container(
+                    width: 2,
+                    height: 20,
+                    color: DesignTokens.accentPrimary.withOpacity(0.3),
+                  ),
+                
+                // Точка
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: isFirst ? DesignTokens.accentPrimary : DesignTokens.surface,
+                    border: Border.all(
+                      color: DesignTokens.accentPrimary,
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(7),
+                    boxShadow: [
+                      BoxShadow(
+                        color: DesignTokens.accentPrimary.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Линия снизу
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: DesignTokens.accentPrimary.withOpacity(0.3),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          
+          // Контент
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12, bottom: 20),
+              child: _buildTimelineCard(
+                date: date,
+                treatments: treatments,
+                isExpanded: isExpanded,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Карточка в timeline
+  Widget _buildTimelineCard({
+    required DateTime date,
+    required List<TreatmentInfo> treatments,
+    required bool isExpanded,
+  }) {
+    return NeoCard(
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: isExpanded,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          childrenPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: DesignTokens.accentPrimary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.calendar_today,
+              size: 20,
+              color: DesignTokens.accentPrimary,
+            ),
+          ),
+          title: Text(
+            DateFormat('dd MMMM yyyy', 'ru').format(date),
+            style: DesignTokens.h4,
+          ),
+          subtitle: Text(
+            '${treatments.length} процедур',
+            style: DesignTokens.small.copyWith(
+              color: DesignTokens.textSecondary,
+            ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Кнопка редактирования
+              IconButton(
+                icon: Icon(
+                  Icons.edit_outlined,
+                  size: 18,
+                  color: DesignTokens.textSecondary,
+                ),
+                onPressed: () {
+                  // TODO: Редактирование лечения
+                },
+              ),
+              Icon(
+                isExpanded ? Icons.expand_less : Icons.expand_more,
+                color: DesignTokens.textSecondary,
+              ),
+            ],
+          ),
+          children: treatments.map((treatment) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: DesignTokens.background.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _getColor(treatment.treatmentType).withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: _getColor(treatment.treatmentType).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _getTreatmentIcon(treatment.treatmentType),
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          treatment.treatmentType,
+                          style: DesignTokens.body.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Зубы: ${treatment.toothNumbers.join(", ")}',
+                          style: DesignTokens.small.copyWith(
+                            color: DesignTokens.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  /* ВАРИАНТ 2: Карточки с цветовыми акцентами
+  Widget _buildCardTreatments(String patientId) {
+    // Каждая процедура - отдельная карточка с цветовым акцентом
+    // С мини-схемой зубов справа
+    // Можно быстро редактировать/удалять
+  }
+  
+  ВАРИАНТ 3: Табличный вид с сортировкой
+  Widget _buildTableTreatments(String patientId) {
+    // Таблица с колонками: Дата | Процедура | Зубы | Стоимость | Действия
+    // Можно сортировать по любой колонке
+    // Компактный вид для большого объема данных
+  } */
+  
   Widget _buildTreatmentsSection(String patientId) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
