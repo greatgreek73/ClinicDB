@@ -2198,52 +2198,109 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
   
   /// ВАРИАНТ 1: Timeline с вертикальной линией (как на скриншоте)
   Widget _buildTimelineTreatments(String patientId) {
+    print('Building timeline for patient: $patientId'); // Для отладки
+    
+    // Попробуем сначала без orderBy, чтобы избежать проблем с индексами
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('treatments')
           .where('patientId', isEqualTo: patientId)
-          .orderBy('date', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
+        print('Snapshot state: ${snapshot.connectionState}'); // Для отладки
+        print('Has data: ${snapshot.hasData}'); // Для отладки
+        print('Has error: ${snapshot.hasError}'); // Для отладки
+        if (snapshot.hasError) {
+          print('Error details: ${snapshot.error}'); // Для отладки
+        }
+        
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40),
+              child: CircularProgressIndicator(),
+            ),
+          );
         }
 
         if (snapshot.hasError) {
           return Center(
-            child: Text('Ошибка загрузки: ${snapshot.error}'),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: DesignTokens.accentDanger,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Ошибка загрузки',
+                    style: DesignTokens.h4.copyWith(
+                      color: DesignTokens.accentDanger,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${snapshot.error}',
+                    style: DesignTokens.small.copyWith(
+                      color: DesignTokens.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
           );
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.medical_services_outlined,
-                  size: 64,
-                  color: DesignTokens.textMuted,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Нет данных о лечении',
-                  style: DesignTokens.body.copyWith(
+            child: Padding(
+              padding: const EdgeInsets.all(40),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.medical_services_outlined,
+                    size: 64,
                     color: DesignTokens.textMuted,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Text(
+                    'Нет данных о лечении',
+                    style: DesignTokens.h4.copyWith(
+                      color: DesignTokens.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Добавьте первую процедуру',
+                    style: DesignTokens.body.copyWith(
+                      color: DesignTokens.textMuted,
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
 
+        print('Documents count: ${snapshot.data!.docs.length}'); // Для отладки
+        
         var treatments = _groupTreatmentsByDate(snapshot.data!.docs);
+        
+        // Сортируем даты по убыванию
+        var sortedDates = treatments.keys.toList()
+          ..sort((a, b) => b.compareTo(a)); // Новые сверху
         
         return ListView.builder(
           padding: const EdgeInsets.all(20),
-          itemCount: treatments.keys.length,
+          itemCount: sortedDates.length,
           itemBuilder: (context, index) {
-            DateTime date = treatments.keys.elementAt(index);
+            DateTime date = sortedDates[index];
             var treatmentInfos = treatments[date]!;
             final isExpanded = index == 0; // Первый элемент раскрыт
             
@@ -2251,7 +2308,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
               date: date,
               treatments: treatmentInfos,
               isFirst: index == 0,
-              isLast: index == treatments.keys.length - 1,
+              isLast: index == sortedDates.length - 1,
               isExpanded: isExpanded,
             );
           },
@@ -2340,56 +2397,65 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
     required List<TreatmentInfo> treatments,
     required bool isExpanded,
   }) {
-    return NeoCard(
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          initiallyExpanded: isExpanded,
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          childrenPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-          leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: DesignTokens.accentPrimary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.calendar_today,
-              size: 20,
-              color: DesignTokens.accentPrimary,
-            ),
-          ),
-          title: Text(
-            DateFormat('dd MMMM yyyy', 'ru').format(date),
-            style: DesignTokens.h4,
-          ),
-          subtitle: Text(
-            '${treatments.length} процедур',
-            style: DesignTokens.small.copyWith(
-              color: DesignTokens.textSecondary,
-            ),
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Кнопка редактирования
-              IconButton(
-                icon: Icon(
-                  Icons.edit_outlined,
-                  size: 18,
+    bool _isExpanded = isExpanded;
+    
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return NeoCard(
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              initiallyExpanded: _isExpanded,
+              onExpansionChanged: (expanded) {
+                setState(() {
+                  _isExpanded = expanded;
+                });
+              },
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              childrenPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: DesignTokens.accentPrimary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.calendar_today,
+                  size: 20,
+                  color: DesignTokens.accentPrimary,
+                ),
+              ),
+              title: Text(
+                DateFormat('dd.MM.yyyy').format(date),
+                style: DesignTokens.h4,
+              ),
+              subtitle: Text(
+                '${treatments.length} процедур',
+                style: DesignTokens.small.copyWith(
                   color: DesignTokens.textSecondary,
                 ),
-                onPressed: () {
-                  // TODO: Редактирование лечения
-                },
               ),
-              Icon(
-                isExpanded ? Icons.expand_less : Icons.expand_more,
-                color: DesignTokens.textSecondary,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Кнопка редактирования
+                  IconButton(
+                    icon: Icon(
+                      Icons.edit_outlined,
+                      size: 18,
+                      color: DesignTokens.textSecondary,
+                    ),
+                    onPressed: () {
+                      // TODO: Редактирование лечения
+                    },
+                  ),
+                  Icon(
+                    _isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: DesignTokens.textSecondary,
+                  ),
+                ],
               ),
-            ],
-          ),
-          children: treatments.map((treatment) {
+              children: treatments.map((treatment) {
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
@@ -2442,8 +2508,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
               ),
             );
           }).toList(),
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 
