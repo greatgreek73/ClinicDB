@@ -25,7 +25,9 @@ class PatientDetailsScreen extends StatefulWidget {
 }
 
 class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
+  // Контроллер для планируемого лечения
   final TextEditingController _plannedTreatmentController = TextEditingController();
+
   bool _waitingList = false;
   bool _secondStage = false;
   bool _hotPatient = false;
@@ -87,7 +89,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                               const SizedBox(height: 16),
                               _buildTreatmentHistoryCard(),
                               const SizedBox(height: 16),
-                              _buildPlannedTreatmentCard(),
+                              _buildTreatmentDaysCard(patientData),
                             ],
                           ),
                         ),
@@ -233,57 +235,84 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     );
   }
 
-  /// Карточка управления статусами (уменьшенная версия)
+  /// Карточка управления статусами (с 4 статусами)
   Widget _buildPersonalInfoCard(Map<String, dynamic> patientData) {
     return NeoCard(
       child: Padding(
-        padding: const EdgeInsets.all(12.0), // Еще более уменьшенные отступы
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Text('⚙️', style: TextStyle(fontSize: 18)), // Уменьшенная иконка
+                const Text('⚙️', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 6),
-                Text('Управление статусами', style: DesignTokens.h4.copyWith(fontSize: 15)), // Еще меньший заголовок
+                Text('Управление статусами', style: DesignTokens.h4.copyWith(fontSize: 15)),
               ],
             ),
             const SizedBox(height: 12),
             
-            // Переключатели статусов в компактном виде
-            Row(
+            // Переключатели статусов в два ряда по 2
+            Column(
               children: [
-                Expanded(
-                  child: _buildCompactStatusToggle(
-                    'Список ожидания',
-                    patientData['waitingList'] == true,
-                    (value) {
-                      setState(() => _waitingList = value ?? false);
-                      _updatePatientField('waitingList', value);
-                    },
-                  ),
+                // Первый ряд
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildCompactStatusToggle(
+                        'Список ожидания',
+                        patientData['waitingList'] == true,
+                        (value) {
+                          if (patientData['treatmentFinished'] != true) {
+                            setState(() => _waitingList = value ?? false);
+                            _updatePatientField('waitingList', value);
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _buildCompactStatusToggle(
+                        'Второй этап',
+                        patientData['secondStage'] == true,
+                        (value) {
+                          if (patientData['treatmentFinished'] != true) {
+                            setState(() => _secondStage = value ?? false);
+                            _updatePatientField('secondStage', value);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildCompactStatusToggle(
-                    'Второй этап',
-                    patientData['secondStage'] == true,
-                    (value) {
-                      setState(() => _secondStage = value ?? false);
-                      _updatePatientField('secondStage', value);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildCompactStatusToggle(
-                    'Горящий пациент',
-                    patientData['hotPatient'] == true,
-                    (value) {
-                      setState(() => _hotPatient = value ?? false);
-                      _updatePatientField('hotPatient', value);
-                    },
-                  ),
+                const SizedBox(height: 8),
+                // Второй ряд
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildCompactStatusToggle(
+                        'Горящий пациент',
+                        patientData['hotPatient'] == true,
+                        (value) {
+                          if (patientData['treatmentFinished'] != true) {
+                            setState(() => _hotPatient = value ?? false);
+                            _updatePatientField('hotPatient', value);
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _buildCompactStatusToggle(
+                        'Лечение окончено',
+                        patientData['treatmentFinished'] == true,
+                        (value) {
+                          _handleTreatmentFinishedToggle(value ?? false);
+                        },
+                        isSpecial: true,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -357,8 +386,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     );
   }
 
-  /// Карточка планируемого лечения с действиями
-  Widget _buildPlannedTreatmentCard() {
+  /// Карточка счетчика дней лечения
+  Widget _buildTreatmentDaysCard(Map<String, dynamic> patientData) {
+    final paymentsData = patientData['payments'] as List<dynamic>? ?? [];
+    final payments = paymentsData.map((p) => Payment.fromMap(p)).toList();
+    final isFinished = patientData['treatmentFinished'] == true;
+    
     return NeoCard(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -367,56 +400,180 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
           children: [
             Row(
               children: [
-                const Text('📋', style: TextStyle(fontSize: 24)),
+                const Text('🕐', style: TextStyle(fontSize: 24)),
                 const SizedBox(width: 8),
-                Text('Планируемое лечение', style: DesignTokens.h2),
+                Text('Дни лечения', style: DesignTokens.h2),
               ],
             ),
             const SizedBox(height: 20),
             
-            NeoCard.inset(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: TextField(
-                  controller: _plannedTreatmentController,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    hintText: 'Введите план лечения...',
-                    hintStyle: TextStyle(color: DesignTokens.textMuted),
-                  ),
-                  readOnly: true,
-                  maxLines: null,
-                  minLines: 3,
+            _buildTreatmentDaysContent(payments, isFinished),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Содержимое счетчика дней
+  Widget _buildTreatmentDaysContent(List<Payment> payments, bool isFinished) {
+    if (payments.isEmpty) {
+      return NeoCard.inset(
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Icon(
+                Icons.hourglass_empty,
+                size: 48,
+                color: DesignTokens.textMuted,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Лечение не начато',
+                style: DesignTokens.h3.copyWith(
+                  color: DesignTokens.textMuted,
+                  fontStyle: FontStyle.italic,
                 ),
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Отсчет начнется после первой оплаты',
+                style: DesignTokens.body.copyWith(
+                  color: DesignTokens.textMuted,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final firstPaymentDate = _getFirstPaymentDate(payments);
+    final daysPassed = _calculateDaysPassed(firstPaymentDate, isFinished);
+    final daysColor = _getDaysColor(daysPassed);
+    final statusText = isFinished ? 'окончено' : 'в лечении';
+    
+    return NeoCard.inset(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            // Основная информация
+            Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: daysColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(
+                      color: daysColor.withOpacity(0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      isFinished ? Icons.check_circle : Icons.schedule,
+                      color: daysColor,
+                      size: 28,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$daysPassed дн${_getDaysEnding(daysPassed)} $statusText',
+                        style: DesignTokens.h2.copyWith(
+                          color: daysColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Начато: ${DateFormat('dd.MM.yyyy').format(firstPaymentDate)}',
+                        style: DesignTokens.body.copyWith(
+                          color: DesignTokens.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             
             const SizedBox(height: 16),
             
-            // Кнопки действий для планов
-            Row(
-              children: [
-                NeoButton(
-                  label: 'Добавить план',
-                  primary: true,
-                  onPressed: () => _navigateAndDisplaySelection(context),
-                ),
-                const SizedBox(width: 12),
-                NeoButton(
-                  label: 'Очистить',
-                  onPressed: () {
-                    _plannedTreatmentController.clear();
-                    _savePlannedTreatment('');
-                  },
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 20),
-            
+            // Индикатор прогресса
+            _buildDaysProgressIndicator(daysPassed, daysColor),
           ],
         ),
       ),
+    );
+  }
+
+  /// Индикатор прогресса по дням
+  Widget _buildDaysProgressIndicator(int days, Color color) {
+    String phaseText;
+    double progress;
+    
+    if (days <= 30) {
+      phaseText = 'Начальная фаза';
+      progress = days / 30;
+    } else if (days <= 90) {
+      phaseText = 'Основная фаза';
+      progress = (days - 30) / 60;
+    } else {
+      phaseText = 'Продленная фаза';
+      progress = 1.0;
+    }
+    
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              phaseText,
+              style: DesignTokens.small.copyWith(
+                color: DesignTokens.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              '$days дн${_getDaysEnding(days)}',
+              style: DesignTokens.small.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        
+        Container(
+          height: 6,
+          decoration: BoxDecoration(
+            color: DesignTokens.background,
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.transparent,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -536,7 +693,61 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     );
   }
 
-  /// Получить заметки пациента из Firebase
+  /// Получить дату первой оплаты
+  DateTime _getFirstPaymentDate(List<Payment> payments) {
+    if (payments.isEmpty) {
+      return DateTime.now();
+    }
+    
+    // Находим самый ранний платеж
+    payments.sort((a, b) => a.date.compareTo(b.date));
+    return payments.first.date;
+  }
+
+  /// Подсчитать количество прошедших дней
+  int _calculateDaysPassed(DateTime startDate, bool isFinished) {
+    final endDate = isFinished ? startDate : DateTime.now();
+    
+    if (isFinished) {
+      // Если лечение окончено, нужно получить дату окончания
+      // Пока возвращаем текущую дату, можно будет доработать
+      return DateTime.now().difference(startDate).inDays;
+    }
+    
+    return endDate.difference(startDate).inDays;
+  }
+
+  /// Определить цвет в зависимости от количества дней
+  Color _getDaysColor(int days) {
+    if (days <= 30) {
+      return DesignTokens.accentSuccess; // Зеленый до 30 дней
+    } else if (days <= 90) {
+      return DesignTokens.accentWarning; // Желтый 30-90 дней
+    } else {
+      return DesignTokens.accentDanger; // Красный свыше 90 дней
+    }
+  }
+
+  /// Получить правильное окончание для слова "день"
+  String _getDaysEnding(int days) {
+    final lastDigit = days % 10;
+    final lastTwoDigits = days % 100;
+    
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+      return 'ей';
+    }
+    
+    switch (lastDigit) {
+      case 1:
+        return 'ь';
+      case 2:
+      case 3:
+      case 4:
+        return 'я';
+      default:
+        return 'ей';
+    }
+  }
   Future<String> _getPatientNotes() async {
     try {
       final doc = await FirebaseFirestore.instance
@@ -1206,10 +1417,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     );
   }
 
-  Widget _buildCompactStatusToggle(String title, bool value, Function(bool?) onChanged) {
+  Widget _buildCompactStatusToggle(String title, bool value, Function(bool?) onChanged, {bool isSpecial = false}) {
     return NeoCard.inset(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Очень компактные отступы
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -1217,18 +1428,23 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
               title,
               style: DesignTokens.small.copyWith(
                 fontWeight: FontWeight.w500,
-                fontSize: 11,
+                fontSize: 10,
+                color: isSpecial && value 
+                    ? DesignTokens.accentSuccess 
+                    : DesignTokens.textPrimary,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             Transform.scale(
-              scale: 0.8, // Еще меньший checkbox
+              scale: 0.75, // Еще меньший checkbox для 4 элементов
               child: Checkbox(
                 value: value,
                 onChanged: onChanged,
-                activeColor: DesignTokens.accentPrimary,
+                activeColor: isSpecial 
+                    ? DesignTokens.accentSuccess 
+                    : DesignTokens.accentPrimary,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
@@ -1236,6 +1452,27 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         ),
       ),
     );
+  }
+
+  /// Обработка переключения статуса "Лечение окончено"
+  void _handleTreatmentFinishedToggle(bool value) async {
+    if (value) {
+      // При включении "Лечение окончено" отключаем все остальные
+      setState(() {
+        _waitingList = false;
+        _secondStage = false;
+        _hotPatient = false;
+      });
+      
+      // Обновляем все статусы в Firebase
+      await _updatePatientField('treatmentFinished', true);
+      await _updatePatientField('waitingList', false);
+      await _updatePatientField('secondStage', false);
+      await _updatePatientField('hotPatient', false);
+    } else {
+      // Просто отключаем статус
+      await _updatePatientField('treatmentFinished', false);
+    }
   }
 
   /// Модальное окно с историей платежей (без размытия)
