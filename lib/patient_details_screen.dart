@@ -39,6 +39,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
   bool _waitingList = false;
   bool _secondStage = false;
   bool _hotPatient = false;
+  
+  // Активные фильтры лечения
+  Set<String> _activeTreatmentFilters = {};
 
   // Разделы навигации
   final List<NavigationSection> _sections = [
@@ -90,6 +93,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
   void _changeSection(int index) {
     setState(() {
       _selectedIndex = index;
+      // Сбрасываем фильтры при уходе с раздела "Лечение"
+      if (_selectedIndex != 1) {
+        _activeTreatmentFilters.clear();
+      }
     });
     _animationController.forward(from: 0.0);
   }
@@ -1037,20 +1044,89 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
                   Padding(
                     padding: const EdgeInsets.all(20),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // Timeline слева с индикацией фильтров
                         Row(
                           children: [
-                            const Text('📋', style: TextStyle(fontSize: 24)),
-                            const SizedBox(width: 8),
-                            Text('История лечения', style: DesignTokens.h3),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: DesignTokens.accentPrimary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: DesignTokens.accentPrimary.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                'Timeline',
+                                style: DesignTokens.small.copyWith(
+                                  color: DesignTokens.accentPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            if (_activeTreatmentFilters.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: DesignTokens.accentWarning.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: DesignTokens.accentWarning.withOpacity(0.4),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.filter_alt,
+                                      size: 14,
+                                      color: DesignTokens.accentWarning,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Фильтры: ${_activeTreatmentFilters.length}',
+                                      style: DesignTokens.small.copyWith(
+                                        color: DesignTokens.accentWarning,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
-                        Text(
-                          'Timeline',
-                          style: DesignTokens.small.copyWith(
-                            color: DesignTokens.textSecondary,
+                        
+                        // История лечения по центру (отцентрована)
+                        Expanded(
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('📋', style: TextStyle(fontSize: 24)),
+                                const SizedBox(width: 8),
+                                Text('История лечения', style: DesignTokens.h3),
+                              ],
+                            ),
                           ),
+                        ),
+                        
+                        // Только кнопка добавить лечение справа (без редактирования)
+                        NeoButton(
+                          label: '+ Добавить лечение',
+                          primary: true,
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => AddTreatmentScreen(patientId: widget.patientId),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -1483,8 +1559,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
           child: Text(
             label,
             style: DesignTokens.body.copyWith(
-              color: DesignTokens.textSecondary,
+              fontWeight: FontWeight.w600,
+              color: DesignTokens.textPrimary,
             ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
         ),
         Text(
@@ -1620,6 +1699,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
                   )
                 : Center(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           Icons.note_add_outlined,
@@ -1633,10 +1713,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
                             color: DesignTokens.textMuted,
                           ),
                         ),
+                        const SizedBox(height: 4),
                         Text(
-                          'Нажмите для добавления',
+                          'Нажмите, чтобы добавить',
                           style: DesignTokens.small.copyWith(
-                            color: DesignTokens.textMuted,
+                            color: DesignTokens.textSecondary,
                           ),
                         ),
                       ],
@@ -2146,51 +2227,83 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
 
   /// Фильтры для истории лечения
   Widget _buildTreatmentFilters() {
+    // Мапа фильтров: отображаемое имя -> тип лечения в БД
+    final filterMap = {
+      'Все': null,
+      '🦷 Кариес': 'Кариес',
+      '🔩 Имплантация': 'Имплантация',
+      '🗑️ Удаление': 'Удаление',
+      '📷 Сканирование': 'Сканирование',
+      '🔬 Эндо': 'Эндо',
+      '⚙️ Формирователь': 'Формирователь',
+      '🧪 PMMA': 'PMMA',
+      '👑 Коронка': 'Коронка',
+      '🔧 Абатмент': 'Абатмент',
+    };
+    
     return Container(
       height: 50,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        children: [
-          _buildFilterChip('Все', true),
-          const SizedBox(width: 8),
-          _buildFilterChip('🦷 Кариес', false),
-          const SizedBox(width: 8),
-          _buildFilterChip('🔩 Имплантация', false),
-          const SizedBox(width: 8),
-          _buildFilterChip('🗑️ Удаление', false),
-          const SizedBox(width: 8),
-          _buildFilterChip('📷 Сканирование', false),
-          const SizedBox(width: 8),
-          _buildFilterChip('🔬 Эндо', false),
-          const SizedBox(width: 8),
-          _buildFilterChip('👑 Коронка', false),
-        ],
+        children: filterMap.entries.map((entry) {
+          final isAll = entry.value == null;
+          final isSelected = isAll 
+              ? _activeTreatmentFilters.isEmpty 
+              : _activeTreatmentFilters.contains(entry.value);
+          
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _buildFilterChip(
+              entry.key,
+              isSelected,
+              () {
+                setState(() {
+                  if (isAll) {
+                    // Кнопка "Все" - очищаем все фильтры
+                    _activeTreatmentFilters.clear();
+                  } else {
+                    // Обычный фильтр - добавляем/удаляем из множества
+                    if (_activeTreatmentFilters.contains(entry.value)) {
+                      _activeTreatmentFilters.remove(entry.value);
+                    } else {
+                      _activeTreatmentFilters.add(entry.value!);
+                    }
+                  }
+                });
+              },
+            ),
+          );
+        }).toList(),
       ),
     );
   }
   
   /// Один фильтр
-  Widget _buildFilterChip(String label, bool isSelected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? DesignTokens.accentPrimary : DesignTokens.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: isSelected 
-            ? [
-                BoxShadow(
-                  color: DesignTokens.accentPrimary.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : DesignTokens.outerShadows(blur: 6, offset: 3),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? Colors.white : DesignTokens.textPrimary,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? DesignTokens.accentPrimary : DesignTokens.surface,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: isSelected 
+              ? [
+                  BoxShadow(
+                    color: DesignTokens.accentPrimary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : DesignTokens.outerShadows(blur: 6, offset: 3),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : DesignTokens.textPrimary,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -2291,6 +2404,51 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
         print('Documents count: ${snapshot.data!.docs.length}'); // Для отладки
         
         var treatments = _groupTreatmentsByDate(snapshot.data!.docs);
+        
+        // Фильтрация: если выбраны фильтры, оставляем только даты с соответствующими процедурами
+        if (_activeTreatmentFilters.isNotEmpty) {
+          treatments = Map.fromEntries(
+            treatments.entries.where((entry) {
+              // Проверяем, есть ли в этой дате хотя бы одна процедура из выбранных типов
+              return entry.value.any((treatment) => 
+                _activeTreatmentFilters.contains(treatment.treatmentType)
+              );
+            })
+          );
+        }
+        
+        // Если после фильтрации не осталось записей
+        if (treatments.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(40),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.filter_alt_off,
+                    size: 64,
+                    color: DesignTokens.textMuted,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Нет процедур по выбранным фильтрам',
+                    style: DesignTokens.h4.copyWith(
+                      color: DesignTokens.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Попробуйте изменить фильтры',
+                    style: DesignTokens.body.copyWith(
+                      color: DesignTokens.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
         
         // Сортируем даты по убыванию
         var sortedDates = treatments.keys.toList()
@@ -2435,51 +2593,68 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
                   color: DesignTokens.textSecondary,
                 ),
               ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Кнопка редактирования
-                  IconButton(
-                    icon: Icon(
-                      Icons.edit_outlined,
-                      size: 18,
-                      color: DesignTokens.textSecondary,
-                    ),
-                    onPressed: () {
-                      // TODO: Редактирование лечения
-                    },
-                  ),
-                  Icon(
-                    _isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: DesignTokens.textSecondary,
-                  ),
-                ],
+              trailing: Icon(
+                _isExpanded ? Icons.expand_less : Icons.expand_more,
+                color: DesignTokens.textSecondary,
               ),
               children: treatments.map((treatment) {
-            return Container(
+            // Определяем, должна ли эта процедура быть подсвечена
+            final isHighlighted = _activeTreatmentFilters.isEmpty || 
+                                   _activeTreatmentFilters.contains(treatment.treatmentType);
+            final isFiltered = _activeTreatmentFilters.isNotEmpty;
+            
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: DesignTokens.background.withOpacity(0.5),
+                color: isHighlighted 
+                    ? DesignTokens.background.withOpacity(0.5)
+                    : DesignTokens.background.withOpacity(0.2), // Затемненный фон
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: _getColor(treatment.treatmentType).withOpacity(0.2),
-                  width: 1,
+                  color: isHighlighted
+                      ? _getColor(treatment.treatmentType).withOpacity(0.3)
+                      : DesignTokens.shadowDark.withOpacity(0.1), // Бледная рамка
+                  width: isHighlighted ? 1.5 : 1,
                 ),
+                boxShadow: isHighlighted && isFiltered
+                    ? [
+                        BoxShadow(
+                          color: _getColor(treatment.treatmentType).withOpacity(0.15),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
               ),
               child: Row(
                 children: [
-                  Container(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: _getColor(treatment.treatmentType).withOpacity(0.1),
+                      color: isHighlighted
+                          ? _getColor(treatment.treatmentType).withOpacity(0.15)
+                          : DesignTokens.shadowDark.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(16),
+                      border: isHighlighted && isFiltered
+                          ? Border.all(
+                              color: _getColor(treatment.treatmentType).withOpacity(0.3),
+                              width: 1,
+                            )
+                          : null,
                     ),
                     child: Center(
                       child: Text(
                         _getTreatmentIcon(treatment.treatmentType),
-                        style: const TextStyle(fontSize: 16),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: isHighlighted
+                              ? DesignTokens.textPrimary
+                              : DesignTokens.textMuted,
+                        ),
                       ),
                     ),
                   ),
@@ -2491,15 +2666,68 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
                         Text(
                           treatment.treatmentType,
                           style: DesignTokens.body.copyWith(
-                            fontWeight: FontWeight.w600,
+                            fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.w500,
+                            color: isHighlighted 
+                                ? DesignTokens.textPrimary 
+                                : DesignTokens.textMuted,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           'Зубы: ${treatment.toothNumbers.join(", ")}',
                           style: DesignTokens.small.copyWith(
-                            color: DesignTokens.textSecondary,
+                            color: isHighlighted
+                                ? DesignTokens.textSecondary
+                                : DesignTokens.textMuted.withOpacity(0.7),
                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Кнопки действий для каждой процедуры
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: isHighlighted ? 1.0 : 0.5,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            size: 16,
+                            color: isHighlighted
+                                ? DesignTokens.textSecondary
+                                : DesignTokens.textMuted,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          padding: EdgeInsets.zero,
+                          onPressed: isHighlighted
+                              ? () {
+                                  _showEditSingleTreatmentDialog(context, treatment);
+                                }
+                              : null,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: isHighlighted
+                                ? DesignTokens.accentDanger
+                                : DesignTokens.textMuted,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          padding: EdgeInsets.zero,
+                          onPressed: isHighlighted
+                              ? () {
+                                  _confirmDeleteTreatment(context, treatment.id!);
+                                }
+                              : null,
                         ),
                       ],
                     ),
@@ -3070,6 +3298,278 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
                 FirebaseFirestore.instance.collection('patients').doc(patientId).delete().then((_) {
                   Navigator.of(context).popUntil((route) => route.isFirst);
                 });
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Метод для редактирования всех процедур за определенную дату
+  void _showEditTreatmentDialog(BuildContext context, DateTime date, List<TreatmentInfo> treatments) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: DesignTokens.background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text('Редактировать лечение', style: DesignTokens.h3),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Дата: ${DateFormat('dd.MM.yyyy').format(date)}',
+                style: DesignTokens.body.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Процедур: ${treatments.length}',
+                style: DesignTokens.body,
+              ),
+              const SizedBox(height: 16),
+              ...treatments.map((treatment) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Text(
+                      _getTreatmentIcon(treatment.treatmentType),
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${treatment.treatmentType}: ${treatment.toothNumbers.join(", ")}',
+                        style: DesignTokens.body,
+                      ),
+                    ),
+                  ],
+                ),
+              )).toList(),
+            ],
+          ),
+          actions: <Widget>[
+            NeoButton(
+              label: 'Закрыть',
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Метод для редактирования одной процедуры
+  void _showEditSingleTreatmentDialog(BuildContext context, TreatmentInfo treatment) {
+    final toothNumbersController = TextEditingController(
+      text: treatment.toothNumbers.join(', '),
+    );
+    String selectedType = treatment.treatmentType;
+    
+    final treatmentTypes = [
+      'Кариес',
+      'Имплантация',
+      'Удаление',
+      'Сканирование',
+      'Эндо',
+      'Формирователь',
+      'PMMA',
+      'Коронка',
+      'Абатмент',
+      'Сдача PMMA',
+      'Сдача коронка',
+      'Сдача абатмент',
+      'Удаление импланта',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: DesignTokens.background,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text('Редактировать процедуру', style: DesignTokens.h3),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Тип процедуры:', style: DesignTokens.body.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: DesignTokens.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: DesignTokens.innerShadows(blur: 6, offset: 3),
+                      ),
+                      child: DropdownButton<String>(
+                        value: selectedType,
+                        isExpanded: true,
+                        underline: const SizedBox(),
+                        dropdownColor: DesignTokens.surface,
+                        style: DesignTokens.body,
+                        onChanged: (String? newValue) {
+                          if (newValue != null) {
+                            setState(() {
+                              selectedType = newValue;
+                            });
+                          }
+                        },
+                        items: treatmentTypes.map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Row(
+                              children: [
+                                Text(_getTreatmentIcon(value), style: const TextStyle(fontSize: 20)),
+                                const SizedBox(width: 8),
+                                Text(value),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Номера зубов:', style: DesignTokens.body.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: DesignTokens.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: DesignTokens.innerShadows(blur: 6, offset: 3),
+                      ),
+                      child: TextField(
+                        controller: toothNumbersController,
+                        decoration: InputDecoration(
+                          hintText: 'Например: 11, 12, 13',
+                          hintStyle: DesignTokens.body.copyWith(color: DesignTokens.textMuted),
+                          border: InputBorder.none,
+                        ),
+                        style: DesignTokens.body,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Введите номера зубов через запятую',
+                      style: DesignTokens.small.copyWith(color: DesignTokens.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                NeoButton(
+                  label: 'Отмена',
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                const SizedBox(width: 8),
+                NeoButton(
+                  label: 'Сохранить',
+                  primary: true,
+                  onPressed: () async {
+                    try {
+                      // Парсим номера зубов
+                      List<int> toothNumbers = [];
+                      if (toothNumbersController.text.isNotEmpty) {
+                        toothNumbers = toothNumbersController.text
+                            .split(',')
+                            .map((s) => int.tryParse(s.trim()) ?? 0)
+                            .where((n) => n > 0)
+                            .toList();
+                      }
+
+                      if (treatment.id != null) {
+                        // Обновляем существующую запись
+                        await FirebaseFirestore.instance
+                            .collection('treatments')
+                            .doc(treatment.id)
+                            .update({
+                          'treatmentType': selectedType,
+                          'toothNumber': toothNumbers,
+                        });
+                        
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Процедура обновлена'),
+                            backgroundColor: DesignTokens.accentSuccess,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      print('Ошибка при обновлении процедуры: $e');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Ошибка при обновлении'),
+                          backgroundColor: DesignTokens.accentDanger,
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Метод для подтверждения удаления процедуры
+  void _confirmDeleteTreatment(BuildContext context, String treatmentId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: DesignTokens.background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text('Удалить процедуру', style: DesignTokens.h3),
+          content: Text(
+            'Вы уверены, что хотите удалить эту процедуру? Это действие нельзя будет отменить.',
+            style: DesignTokens.body,
+          ),
+          actions: <Widget>[
+            NeoButton(
+              label: 'Отмена',
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            const SizedBox(width: 8),
+            NeoButton(
+              label: 'Удалить',
+              primary: true,
+              onPressed: () async {
+                try {
+                  await FirebaseFirestore.instance
+                      .collection('treatments')
+                      .doc(treatmentId)
+                      .delete();
+                  
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Процедура удалена'),
+                      backgroundColor: DesignTokens.accentSuccess,
+                    ),
+                  );
+                } catch (e) {
+                  print('Ошибка при удалении процедуры: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Ошибка при удалении'),
+                      backgroundColor: DesignTokens.accentDanger,
+                    ),
+                  );
+                }
               },
             ),
           ],
