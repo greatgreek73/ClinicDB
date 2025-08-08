@@ -46,22 +46,54 @@ class PatientNavigationRail extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Аватар пациента вверху (вернули на место)
+          // Аватар пациента вверху
           Container(
-            padding: const EdgeInsets.all(12),
-            child: _buildCompactAvatar(patientData['photoUrl'], patientData: patientData),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            child: Column(
+              children: [
+                _buildCompactAvatar(patientData['photoUrl'], patientData: patientData),
+                const SizedBox(height: 12),
+                Container(
+                  height: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        DesignTokens.textSecondary.withOpacity(0.2),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          
-          const Divider(height: 1),
           
           // Навигационные элементы
           Expanded(
-            child: ListView.builder(
-              // Performance optimizations
-              itemExtent: 56.0, // Fixed height for navigation items
-              cacheExtent: 200.0, // Cache content outside visible area
+            child: ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: sections.length,
+              separatorBuilder: (context, index) {
+                // Добавляем разделители между группами секций
+                if (index == 0 || index == 2 || index == 4) {
+                  return Container(
+                    height: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          DesignTokens.textSecondary.withOpacity(0.1),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
               itemBuilder: (context, index) {
                 final section = sections[index];
                 final isSelected = selectedIndex == index;
@@ -77,17 +109,36 @@ class PatientNavigationRail extends StatelessWidget {
             ),
           ),
           
+          // Разделитель перед кнопкой назад
+          Container(
+            height: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  DesignTokens.textSecondary.withOpacity(0.2),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+          
           // Кнопка выхода/назад внизу
           Container(
             padding: const EdgeInsets.all(12),
             child: Container(
               decoration: BoxDecoration(
                 color: DesignTokens.background.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: DesignTokens.textSecondary.withOpacity(0.1),
+                  width: 1,
+                ),
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                iconSize: 20,
+                icon: const Icon(Icons.arrow_back_ios_new),
+                iconSize: 18,
                 color: DesignTokens.textSecondary,
                 onPressed: () => Navigator.of(context).pop(),
                 tooltip: 'Назад',
@@ -108,43 +159,78 @@ class PatientNavigationRail extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      height: 72,
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isSelected ? DesignTokens.background : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
+              color: isSelected 
+                  ? DesignTokens.background 
+                  : DesignTokens.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected 
+                    ? DesignTokens.accentPrimary.withOpacity(0.3)
+                    : Colors.transparent,
+                width: 1.5,
+              ),
               boxShadow: isSelected
-                  ? DesignTokens.innerShadows(blur: 8, offset: 4)
-                  : null,
+                  ? [
+                      BoxShadow(
+                        color: DesignTokens.shadowDark.withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                      BoxShadow(
+                        color: DesignTokens.shadowLight.withOpacity(0.5),
+                        blurRadius: 12,
+                        offset: const Offset(0, -2),
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: DesignTokens.shadowDark.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
             ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Эмодзи или иконка
-                Text(
-                  emoji,
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 250),
                   style: TextStyle(
-                    fontSize: isSelected ? 24 : 20,
+                    fontSize: isSelected ? 26 : 22,
                   ),
+                  child: Text(emoji),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 // Подпись
-                Text(
-                  label,
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 250),
                   style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected ? DesignTokens.accentPrimary : DesignTokens.textSecondary,
+                    fontSize: isSelected ? 11 : 10,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected 
+                        ? DesignTokens.accentPrimary 
+                        : DesignTokens.textSecondary.withOpacity(0.8),
+                    letterSpacing: isSelected ? 0.3 : 0,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ],
             ),

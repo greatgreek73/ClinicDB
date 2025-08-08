@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 import '../../../design_system/design_system_screen.dart' show DesignTokens;
-import '../../../patient_statistics_screen.dart';
 import 'widgets/patient_header.dart';
 import 'widgets/navigation_rail.dart';
 import 'sections/overview_section.dart';
@@ -15,6 +14,7 @@ import 'sections/finance_section.dart';
 import 'sections/statistics_section.dart';
 import 'sections/documents_section.dart';
 import 'sections/notes_section.dart';
+import 'sections/patients_stats_section.dart';
 
 class PatientDetailsScreen extends StatefulWidget {
   final String patientId;
@@ -92,16 +92,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
   }
 
   void _changeSection(int index) {
-    // Если это раздел "Пациенты" (index 6), открываем новую страницу
-    if (index == 6) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => PatientStatisticsScreen(),
-        ),
-      );
-      return; // Не меняем текущий раздел
-    }
-    
     setState(() {
       _selectedIndex = index;
     });
@@ -195,6 +185,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
                                 // 5: Заметки - with current selectedIndex
                                 NotesSection(
                                   key: const ValueKey('notes'),
+                                  patientData: patientData,
+                                  patientId: widget.patientId,
+                                  selectedIndex: _selectedIndex,
+                                ),
+                                // 6: Пациенты - with current selectedIndex
+                                PatientsStatsSection(
+                                  key: const ValueKey('patients_stats'),
                                   patientData: patientData,
                                   patientId: widget.patientId,
                                   selectedIndex: _selectedIndex,
