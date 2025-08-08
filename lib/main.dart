@@ -43,6 +43,27 @@ void main() async {
         options: DefaultFirebaseOptions.currentPlatform,
       );
       Logger.i('Firebase initialized');
+      
+      // Enable offline persistence for Firestore
+      // This will cache data locally for offline access and better performance
+      if (!kIsWeb) {
+        // Offline persistence is automatically enabled on mobile platforms
+        // but we can configure the cache size
+        FirebaseFirestore.instance.settings = const Settings(
+          persistenceEnabled: true,
+          // Set cache size to 100MB (default is 40MB)
+          cacheSizeBytes: 100 * 1024 * 1024,
+        );
+        Logger.i('Firebase offline persistence enabled with 100MB cache');
+      } else {
+        // For web, we need to explicitly enable persistence
+        try {
+          await FirebaseFirestore.instance.enablePersistence();
+          Logger.i('Firebase persistence enabled for web');
+        } catch (e) {
+          Logger.w('Failed to enable persistence on web: $e');
+        }
+      }
     } else if (defaultTargetPlatform == TargetPlatform.windows) {
       Logger.w('Firebase not configured for Windows. Running without Firebase.');
       // Для Windows пока пропускаем инициализацию Firebase
@@ -51,6 +72,13 @@ void main() async {
         options: DefaultFirebaseOptions.currentPlatform,
       );
       Logger.i('Firebase initialized');
+      
+      // Enable offline persistence for other platforms
+      FirebaseFirestore.instance.settings = const Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: 100 * 1024 * 1024,
+      );
+      Logger.i('Firebase offline persistence enabled');
     }
   } catch (e, st) {
     Logger.e('Error initializing Firebase', e, st);

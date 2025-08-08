@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../design_system/design_system_screen.dart' show NeoCard, DesignTokens;
-import '../../dashboard/dashboard_controller.dart';
+import '../../../di/dashboard_providers.dart';
 
 /// Отображает агрегаты процедур:
 /// - Импланты: месяц/год
@@ -13,7 +13,7 @@ class TreatmentStatsWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(dashboardControllerProvider);
+    final state = ref.watch(dashboardStateProvider);
 
     Widget buildPanel({
       required String title,

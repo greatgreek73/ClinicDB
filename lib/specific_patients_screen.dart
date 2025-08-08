@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'patient_details_screen.dart';
+import 'patient/details/patient_details_screen.dart';
 import 'package:intl/intl.dart';
 
 class SpecificPatientsScreen extends StatelessWidget {
@@ -32,6 +32,10 @@ class SpecificPatientsScreen extends StatelessWidget {
           }
 
           return ListView.builder(
+            // Performance optimizations
+            itemExtent: 120.0, // Fixed height for each patient item with treatment info
+            cacheExtent: 400.0, // Cache content outside visible area
+            physics: const AlwaysScrollableScrollPhysics(),
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
               var patientData = snapshot.data!.docs[index].data() as Map<String, dynamic>;

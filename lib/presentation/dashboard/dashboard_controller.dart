@@ -6,6 +6,7 @@ import '../../domain/models/patient.dart';
 import '../../domain/models/treatment_counts.dart';
 import '../../domain/models/treatment_type.dart';
 import '../../domain/repositories/dashboard_repository.dart';
+import '../../utils/compute_helpers.dart';
 
 class DashboardState {
   final AsyncValue<List<Patient>> patients;
@@ -94,16 +95,58 @@ class DashboardController extends StateNotifier<DashboardState> {
 
   void init() {
     // Пациенты + производные счётчики
-    _patientsSub = _repo.watchPatients().listen((list) {
+    _patientsSub = _repo.watchPatients().listen((list) async {
       state = state.copyWith(patients: AsyncValue.data(list));
-      final waiting = list.where((p) => p.waitingList).length;
-      final second = list.where((p) => p.secondStage).length;
-      final hot = list.where((p) => p.hotPatient).length;
-      state = state.copyWith(
-        waitingListCount: AsyncValue.data(waiting),
-        secondStageCount: AsyncValue.data(second),
-        hotPatientCount: AsyncValue.data(hot),
-      );
+      
+      // Use compute for counting operations when list is large
+      if (list.length > 100) {
+        try {
+          // Filter patients in background isolate
+          final waitingParams = FilterPatientsParams(
+            patients: list,
+            hasImplant: null, // We're checking waitingList instead
+          );
+          
+          // Count in parallel using compute
+          final results = await Future.wait([
+            filterPatientsCompute(waitingParams.copyWith(
+              patients: list.where((p) => p.waitingList).toList(),
+            )).then((filtered) => filtered.length),
+            filterPatientsCompute(waitingParams.copyWith(
+              patients: list.where((p) => p.secondStage).toList(),
+            )).then((filtered) => filtered.length),
+            filterPatientsCompute(waitingParams.copyWith(
+              patients: list.where((p) => p.hotPatient).toList(),
+            )).then((filtered) => filtered.length),
+          ]);
+          
+          state = state.copyWith(
+            waitingListCount: AsyncValue.data(results[0]),
+            secondStageCount: AsyncValue.data(results[1]),
+            hotPatientCount: AsyncValue.data(results[2]),
+          );
+        } catch (e, st) {
+          // Fallback to main thread if compute fails
+          final waiting = list.where((p) => p.waitingList).length;
+          final second = list.where((p) => p.secondStage).length;
+          final hot = list.where((p) => p.hotPatient).length;
+          state = state.copyWith(
+            waitingListCount: AsyncValue.data(waiting),
+            secondStageCount: AsyncValue.data(second),
+            hotPatientCount: AsyncValue.data(hot),
+          );
+        }
+      } else {
+        // For small lists, count on main thread
+        final waiting = list.where((p) => p.waitingList).length;
+        final second = list.where((p) => p.secondStage).length;
+        final hot = list.where((p) => p.hotPatient).length;
+        state = state.copyWith(
+          waitingListCount: AsyncValue.data(waiting),
+          secondStageCount: AsyncValue.data(second),
+          hotPatientCount: AsyncValue.data(hot),
+        );
+      }
     }, onError: (e, st) {
       state = state.copyWith(
         patients: AsyncValue.error(e, st),

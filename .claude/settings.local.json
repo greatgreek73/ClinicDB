@@ -3,7 +3,13 @@
     "allow": [
       "Bash(find:*)",
       "Bash(test:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(flutter build:*)",
+      "Bash(rm:*)",
+      "Bash(mkdir:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(dart analyze:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

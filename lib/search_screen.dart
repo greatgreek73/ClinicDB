@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'patient_details_screen.dart'; // Убедитесь, что этот импорт присутствует
+import 'patient/details/patient_details_screen.dart'; // Убедитесь, что этот импорт присутствует
 
 class SearchScreen extends StatefulWidget {
   @override
@@ -59,6 +59,10 @@ class _SearchScreenState extends State<SearchScreen> {
                 if (snapshot.hasData) {
                   var documents = snapshot.data!.docs;
                   return ListView.builder(
+                    // Performance optimizations
+                    itemExtent: 75.0, // Fixed height for each search result
+                    cacheExtent: 400.0, // Cache content outside visible area
+                    physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: documents.length,
                     itemBuilder: (context, index) {
                       var patient = documents[index].data() as Map<String, dynamic>;

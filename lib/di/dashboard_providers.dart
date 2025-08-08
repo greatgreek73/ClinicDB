@@ -7,6 +7,9 @@ import '../domain/models/patient.dart';
 import '../domain/models/treatment_counts.dart';
 import '../domain/models/treatment_type.dart';
 import '../data/repositories/firebase_dashboard_repository.dart';
+import '../data/repositories/cached_dashboard_repository.dart';
+import '../presentation/dashboard/dashboard_controller.dart';
+import '../presentation/dashboard/debounced_dashboard_controller.dart';
 
 /// Провайдер FirebaseFirestore (отдельно для тестируемости)
 final firebaseFirestoreProvider = Provider<FirebaseFirestore>((ref) {
@@ -15,13 +18,15 @@ final firebaseFirestoreProvider = Provider<FirebaseFirestore>((ref) {
 
 /// Провайдер репозитория дашборда.
 /// На Windows (не web) подставляет мок, чтобы приложение работало без Firebase.
+/// Использует CachedDashboardRepository для улучшения производительности.
 final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
   final isWindowsDesktop = !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
   if (isWindowsDesktop) {
     return MockDashboardRepository();
   }
   final db = ref.watch(firebaseFirestoreProvider);
-  return FirebaseDashboardRepository(db);
+  // Use cached repository for better performance
+  return CachedDashboardRepository(db);
 });
 
 /// Простая мок-реализация для среды без Firebase или для тестов.
@@ -64,3 +69,15 @@ class MockDashboardRepository implements DashboardRepository {
     return Stream.value(0);
   }
 }
+
+/// Feature flag to enable debounced dashboard updates
+const bool _useDebouncing = true;
+
+/// Main dashboard state provider - uses debouncing by default for better performance
+final dashboardStateProvider = Provider<DashboardState>((ref) {
+  if (_useDebouncing) {
+    return ref.watch(debouncedDashboardControllerProvider);
+  } else {
+    return ref.watch(dashboardControllerProvider);
+  }
+});

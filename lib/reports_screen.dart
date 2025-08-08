@@ -67,6 +67,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
           Expanded(
             child: ListView.builder(
+              // Performance optimizations
+              itemExtent: 200.0, // Fixed height for each statistics widget
+              cacheExtent: 400.0, // Cache content outside visible area
+              physics: const AlwaysScrollableScrollPhysics(),
               itemCount: treatmentTypes.length,
               itemBuilder: (context, index) {
                 return _buildStatisticsWidget(treatmentTypes[index]);

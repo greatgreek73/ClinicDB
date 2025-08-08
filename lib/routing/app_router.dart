@@ -5,7 +5,7 @@ import '../screens/new_dashboard_screen.dart';
 import '../add_patient_screen.dart';
 import '../search_screen.dart';
 import '../reports_screen.dart';
-import '../patient_details_screen.dart';
+import '../patient/details/patient_details_screen.dart';
 import '../design_system/design_system_screen.dart';
 
 /// Определение всех route names для типобезопасного использования.

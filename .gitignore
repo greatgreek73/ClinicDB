@@ -42,3 +42,44 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 .aider*
+
+# Android build artifacts
+/android/.gradle/
+/android/app/.cxx/
+/android/captures/
+/android/local.properties
+*.apk
+*.aab
+
+# Windows build artifacts
+/windows/flutter/ephemeral/
+/windows/x64/
+/windows/x86/
+/windows/ARM64/
+
+# macOS build artifacts
+/macos/Flutter/ephemeral/
+/macos/Flutter/GeneratedPluginRegistrant.swift
+/macos/.symlinks/
+
+# Linux build artifacts
+/linux/flutter/ephemeral/
+
+# Web build artifacts
+/web/.dart_tool/
+
+# Test cache
+/test_cache/
+/coverage/
+
+# IDE and tools
+*.lock.hashes
+.packages
+.flutter-plugins-dependencies
+pubspec.lock.json
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+repopack-output.txt

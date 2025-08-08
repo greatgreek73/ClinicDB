@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../patient_details_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../patient/details/patient_details_screen.dart';
 
 class FilteredPatientsScreen extends StatelessWidget {
   final String filterType;
@@ -60,6 +61,10 @@ class FilteredPatientsScreen extends StatelessWidget {
           }
 
           return ListView.builder(
+            // Performance optimizations
+            itemExtent: 80.0, // Fixed height for each item improves scrolling performance
+            cacheExtent: 500.0, // Cache 500 pixels worth of content outside visible area
+            physics: const AlwaysScrollableScrollPhysics(),
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
               var patientData = snapshot.data!.docs[index].data() as Map<String, dynamic>;
@@ -69,8 +74,24 @@ class FilteredPatientsScreen extends StatelessWidget {
               Widget avatar;
               if (patientData['photoUrl'] != null && patientData['photoUrl'].toString().isNotEmpty) {
                 avatar = CircleAvatar(
-                  backgroundImage: NetworkImage(patientData['photoUrl']),
                   radius: 25,
+                  child: ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl: patientData['photoUrl'],
+                      fit: BoxFit.cover,
+                      width: 50,
+                      height: 50,
+                      placeholder: (context, url) => CircularProgressIndicator(strokeWidth: 2),
+                      errorWidget: (context, url, error) => Icon(
+                        patientData['gender'] == 'Мужской' ? Icons.person : Icons.person_outline,
+                        color: Colors.grey.shade700,
+                      ),
+                      // Performance optimizations for list
+                      memCacheHeight: 100,
+                      memCacheWidth: 100,
+                      fadeInDuration: const Duration(milliseconds: 150),
+                    ),
+                  ),
                 );
               } else {
                 avatar = CircleAvatar(

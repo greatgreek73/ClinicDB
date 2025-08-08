@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../dashboard/dashboard_controller.dart';
+import '../../../di/dashboard_providers.dart';
 import '../../../screens/filtered_patients_screen.dart';
 import '../../../design_system/design_system_screen.dart' show NeoCard, NeoButton, DesignTokens;
 
@@ -14,7 +14,7 @@ class PatientCountsWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(dashboardControllerProvider);
+    final state = ref.watch(dashboardStateProvider);
 
     Widget counterCard({
       required String title,
