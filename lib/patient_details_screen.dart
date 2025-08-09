@@ -2086,8 +2086,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
   }
 
   Widget _buildTreatmentSchemas(String patientId) {
-    return FutureBuilder<Map<String, int>>(
-      future: _getTreatmentCounts(patientId),
+    // OPTIMIZED: один поток по всем процедурам пациента,
+    // без 4 дополнительных запросов по каждой из топ‑4 процедур.
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('treatments')
+          .where('patientId', isEqualTo: patientId)
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -2095,29 +2100,66 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
         if (snapshot.hasError) {
           return Text('Ошибка: ${snapshot.error}');
         }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Text('Нет данных о лечении');
         }
 
-        var sortedTreatments = snapshot.data!.entries.toList()
+        // Считаем: количество по типу + множество пролеченных зубов по типу
+        final counts = <String, int>{};
+        final Map<String, Set<int>> typeToTeeth = {};
+        for (final doc in snapshot.data!.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final type = (data['treatmentType'] as String?) ?? '';
+          final teethList = (data['toothNumber'] as List?) ?? const <dynamic>[];
+          final teeth = teethList.whereType<num>().map((e) => e.toInt());
+          if (type.isEmpty) continue;
+          counts[type] = (counts[type] ?? 0) + teethList.length;
+          (typeToTeeth[type] ??= <int>{}).addAll(teeth);
+        }
+
+        final top = counts.entries.where((e) => e.value > 0).toList()
           ..sort((a, b) => b.value.compareTo(a.value));
-        var topFourTreatments = sortedTreatments.take(4).toList();
+        final topFour = top.take(4).map((e) => e.key).toList();
+
+        Widget cell(int idx) {
+          if (idx >= topFour.length) {
+            return NeoCard.inset(
+              child: SizedBox(
+                height: 120,
+                child: Center(
+                  child: Text(
+                    '—',
+                    style: TextStyle(
+                      color: DesignTokens.textMuted,
+                      fontSize: 24,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+          final type = topFour[idx];
+          final color = _getColor(type);
+          final treatedTeeth = typeToTeeth[type] ?? const <int>{};
+          return _buildMiniSchemaGrid(type, color, treatedTeeth);
+        }
 
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments[0].key, _getColor(topFourTreatments[0].key))),
+                Expanded(child: cell(0)),
                 const SizedBox(width: 12),
-                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments.length > 1 ? topFourTreatments[1].key : '', _getColor(topFourTreatments.length > 1 ? topFourTreatments[1].key : ''))),
+                Expanded(child: cell(1)),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments.length > 2 ? topFourTreatments[2].key : '', _getColor(topFourTreatments.length > 2 ? topFourTreatments[2].key : ''))),
+                Expanded(child: cell(2)),
                 const SizedBox(width: 12),
-                Expanded(child: _buildTreatmentSchema(patientId, topFourTreatments.length > 3 ? topFourTreatments[3].key : '', _getColor(topFourTreatments.length > 3 ? topFourTreatments[3].key : ''))),
+                Expanded(child: cell(3)),
               ],
             ),
           ],
@@ -2472,6 +2514,67 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
           },
         );
       },
+    );
+  }
+
+  Widget _buildMiniSchemaGrid(String title, Color color, Set<int> treatedTeeth) {
+    return NeoCard.inset(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Text(
+              title,
+              style: DesignTokens.small.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 80,
+              child: GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 16,
+                  childAspectRatio: 1,
+                  crossAxisSpacing: 1,
+                  mainAxisSpacing: 1,
+                ),
+                itemCount: 32,
+                itemBuilder: (context, index) {
+                  final toothNumber = _getToothNumber(index);
+                  final isTreated = treatedTeeth.contains(toothNumber);
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: isTreated
+                          ? color.withOpacity(0.15)
+                          : DesignTokens.background,
+                      border: Border.all(
+                        color: DesignTokens.shadowDark.withOpacity(0.2),
+                        width: 1,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Center(
+                      child: Text(
+                        toothNumber.toString(),
+                        style: TextStyle(
+                          fontSize: 6,
+                          color: isTreated ? color : DesignTokens.textMuted,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
   
