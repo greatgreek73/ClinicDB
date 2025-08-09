@@ -4,12 +4,10 @@
       "Bash(find:*)",
       "Bash(test:*)",
       "Bash(ls:*)",
-      "Bash(flutter build:*)",
-      "Bash(rm:*)",
-      "Bash(mkdir:*)",
-      "Bash(flutter analyze:*)",
-      "Bash(dart analyze:*)",
-      "Bash(grep:*)"
+      "Bash(git checkout:*)",
+      "Bash(flutter pub:*)",
+      "Bash(/mnt/c/src/flutter/bin/flutter pub get)",
+      "Bash(dart analyze:*)"
     ],
     "deny": []
   }
