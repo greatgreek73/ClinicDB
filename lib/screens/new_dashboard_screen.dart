@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../add_patient_screen.dart';
 import '../search_screen.dart';
+import '../stats_screen.dart';
 import '../theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 // Riverpod-представление (данные приходят из контроллера)
@@ -172,7 +173,9 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
                       NeoButton(label: 'Запись', onPressed: () {}),
                       NeoButton(label: 'Поиск', onPressed: () => context.push('/search')),
                       NeoButton(label: 'Пациенты', onPressed: () => context.push('/search')),
-                      NeoButton(label: 'Отчёты', onPressed: () => context.push('/reports')),
+                      NeoButton(label: 'Статистика', onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const StatsScreen()));
+                      }),
                     ],
                   ),
                 ),
