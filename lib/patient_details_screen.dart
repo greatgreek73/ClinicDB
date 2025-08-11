@@ -983,11 +983,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
                   child: Column(
                     children: [
                       _buildOverviewCard(
-                        '👤 Личная информация',
-                        _buildPersonalInfoContent(patientData),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildOverviewCard(
                         '⚙️ Управление статусами',
                         _buildStatusManagementContent(patientData),
                       ),
@@ -1000,11 +995,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
                   child: Column(
                     children: [
                       _buildOverviewCard(
-                        '💰 Финансовая сводка',
-                        _buildFinancialSummaryContent(patientData),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildOverviewCard(
                         '🕐 Дни лечения',
                         _buildTreatmentDaysContent(patientData),
                       ),
@@ -1012,12 +1002,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 16),
-            // Краткие заметки
-            _buildOverviewCard(
-              '📝 Заметки',
-              _buildQuickNotesContent(patientData),
             ),
           ],
         ),
@@ -2086,8 +2070,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
   }
 
   Widget _buildTreatmentSchemas(String patientId) {
-    // OPTIMIZED: один поток по всем процедурам пациента,
-    // без 4 дополнительных запросов по каждой из топ‑4 процедур.
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('treatments')
@@ -2104,67 +2086,304 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> with Single
           return const Text('Нет данных о лечении');
         }
 
-        // Считаем: количество по типу + множество пролеченных зубов по типу
-        final counts = <String, int>{};
+        // Build data structures
         final Map<String, Set<int>> typeToTeeth = {};
+        final Map<int, Set<String>> toothToTypes = {};
+        final Map<String, int> counts = {};
+        
         for (final doc in snapshot.data!.docs) {
           final data = doc.data() as Map<String, dynamic>;
           final type = (data['treatmentType'] as String?) ?? '';
-          final teethList = (data['toothNumber'] as List?) ?? const <dynamic>[];
-          final teeth = teethList.whereType<num>().map((e) => e.toInt());
           if (type.isEmpty) continue;
-          counts[type] = (counts[type] ?? 0) + teethList.length;
+          
+          final teethList = (data['toothNumber'] as List?) ?? [];
+          final teeth = teethList.whereType<num>().map((e) => e.toInt()).toList();
+          
+          // Count treatments
+          counts[type] = (counts[type] ?? 0) + 1;
+          
+          // Map type to teeth
           (typeToTeeth[type] ??= <int>{}).addAll(teeth);
+          
+          // Map tooth to types
+          for (final tooth in teeth) {
+            (toothToTypes[tooth] ??= <String>{}).add(type);
+          }
         }
 
-        final top = counts.entries.where((e) => e.value > 0).toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-        final topFour = top.take(4).map((e) => e.key).toList();
+        // Calculate highlighted teeth based on active filters
+        final Set<int> highlightedTeeth = {};
+        if (_activeTreatmentFilters.isNotEmpty) {
+          for (final filter in _activeTreatmentFilters) {
+            highlightedTeeth.addAll(typeToTeeth[filter] ?? {});
+          }
+        }
 
-        Widget cell(int idx) {
-          if (idx >= topFour.length) {
-            return NeoCard.inset(
-              child: SizedBox(
-                height: 120,
-                child: Center(
-                  child: Text(
-                    '—',
-                    style: TextStyle(
-                      color: DesignTokens.textMuted,
-                      fontSize: 24,
+        // Use LayoutBuilder for responsive layout
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 900;
+            
+            if (isWide) {
+              // Wide layout: Row with scheme on left, legend on right
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _buildUnifiedTeethScheme(
+                      highlightedTeeth: highlightedTeeth,
+                      toothToTypes: toothToTypes,
                     ),
                   ),
-                ),
-              ),
-            );
-          }
-          final type = topFour[idx];
-          final color = _getColor(type);
-          final treatedTeeth = typeToTeeth[type] ?? const <int>{};
-          return _buildMiniSchemaGrid(type, color, treatedTeeth);
-        }
+                  const SizedBox(width: 16),
+                  SizedBox(
+                    width: 260,
+                    child: _buildTreatmentLegendPanel(counts: counts),
+                  ),
+                ],
+              );
+            } else {
+              // Narrow layout: Column with scheme on top
+              return Column(
+                children: [
+                  _buildUnifiedTeethScheme(
+                    highlightedTeeth: highlightedTeeth,
+                    toothToTypes: toothToTypes,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTreatmentLegendPanel(counts: counts),
+                ],
+              );
+            }
+          },
+        );
+      },
+    );
+  }
 
-        return Column(
+  Widget _buildUnifiedTeethScheme({
+    required Set<int> highlightedTeeth,
+    required Map<int, Set<String>> toothToTypes,
+  }) {
+    return NeoCard(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              'Зубная формула',
+              style: DesignTokens.body.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 400;
+                
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: isWide ? 16 : 8,
+                    childAspectRatio: 1,
+                    crossAxisSpacing: 2,
+                    mainAxisSpacing: 2,
+                  ),
+                  itemCount: 32,
+                  itemBuilder: (context, index) {
+                    final toothNumber = _getToothNumber(index);
+                    final types = toothToTypes[toothNumber] ?? {};
+                    final isHighlighted = highlightedTeeth.contains(toothNumber);
+                    final hasFilters = _activeTreatmentFilters.isNotEmpty;
+                    
+                    // Determine background color
+                    Color backgroundColor = DesignTokens.background;
+                    if (hasFilters && isHighlighted) {
+                      // When filters active and tooth is highlighted
+                      if (_activeTreatmentFilters.length == 1) {
+                        // Single filter - use that type's color
+                        backgroundColor = _getColor(_activeTreatmentFilters.first).withOpacity(0.3);
+                      } else {
+                        // Multiple filters - use accent color
+                        backgroundColor = DesignTokens.accentPrimary.withOpacity(0.3);
+                      }
+                    }
+                    
+                    // Determine if we should show a dot (when no filters and tooth is treated)
+                    Widget? dotIndicator;
+                    if (!hasFilters && types.isNotEmpty) {
+                      // Find most frequent type for this tooth
+                      String? mostFrequentType;
+                      if (types.length == 1) {
+                        mostFrequentType = types.first;
+                      } else {
+                        // If multiple types, pick the first one (could be improved with frequency logic)
+                        mostFrequentType = types.first;
+                      }
+                      
+                      dotIndicator = Positioned(
+                        top: 2,
+                        right: 2,
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: _getColor(mostFrequentType),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      );
+                    }
+                    
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        border: Border.all(
+                          color: DesignTokens.shadowDark.withOpacity(0.2),
+                          width: 0.5,
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Stack(
+                        children: [
+                          Center(
+                            child: Text(
+                              toothNumber.toString(),
+                              style: DesignTokens.small.copyWith(
+                                fontWeight: isHighlighted && hasFilters ? FontWeight.bold : FontWeight.normal,
+                                color: isHighlighted && hasFilters 
+                                    ? DesignTokens.textPrimary 
+                                    : DesignTokens.textSecondary,
+                              ),
+                            ),
+                          ),
+                          if (dotIndicator != null) dotIndicator,
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTreatmentLegendPanel({required Map<String, int> counts}) {
+    // Sort by count descending
+    final sortedEntries = counts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    
+    return NeoCard.inset(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(child: cell(0)),
-                const SizedBox(width: 12),
-                Expanded(child: cell(1)),
+                Text(
+                  'Статистика и фильтр',
+                  style: DesignTokens.body.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (_activeTreatmentFilters.isNotEmpty)
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _activeTreatmentFilters.clear();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      child: Text(
+                        'Сброс',
+                        style: DesignTokens.small.copyWith(
+                          color: DesignTokens.accentPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: cell(2)),
-                const SizedBox(width: 12),
-                Expanded(child: cell(3)),
-              ],
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: sortedEntries.map((entry) {
+                final type = entry.key;
+                final count = entry.value;
+                final isSelected = _activeTreatmentFilters.contains(type);
+                final color = _getColor(type);
+                
+                return InkWell(
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        _activeTreatmentFilters.remove(type);
+                      } else {
+                        _activeTreatmentFilters.add(type);
+                      }
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isSelected 
+                          ? color.withOpacity(0.15)
+                          : DesignTokens.background,
+                      border: Border.all(
+                        color: isSelected 
+                            ? color.withOpacity(0.5)
+                            : DesignTokens.shadowDark.withOpacity(0.2),
+                        width: 1,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          type,
+                          style: DesignTokens.small.copyWith(
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '($count)',
+                          style: DesignTokens.small.copyWith(
+                            color: DesignTokens.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
