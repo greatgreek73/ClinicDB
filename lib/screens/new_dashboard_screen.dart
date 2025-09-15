@@ -9,6 +9,8 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../presentation/dashboard/widgets/patient_counts_widget.dart';
 import '../../../presentation/dashboard/widgets/treatment_stats_widget.dart';
+import '../../../presentation/dashboard/widgets/today_stats_widget.dart';
+import '../../../presentation/dashboard/widgets/unified_dashboard_panel.dart';
 // Неоморфные компоненты дизайн‑системы
 import '../design_system/design_system_screen.dart' show NeoCard, NeoButton, NeoTabBar, DesignTokens;
 
@@ -23,6 +25,30 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _slideAnimation;
+
+  Widget _numbered(Widget child, int number) {
+    return Stack(
+      children: [
+        child,
+        Positioned(
+          top: 6,
+          left: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white24, width: 1),
+            ),
+            child: Text(
+              '$number',
+              style: const TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   void initState() {
@@ -66,8 +92,17 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12.0),
-          child: _buildNeoLayout(context),
+          child: _buildUnifiedLayout(context),
         ),
+      ),
+    );
+  }
+
+  Widget _buildUnifiedLayout(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: SizedBox.expand(
+        child: const UnifiedDashboardPanel(),
       ),
     );
   }
@@ -93,7 +128,8 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
                     ),
                   );
                 },
-                child: NeoCard(
+                child: _numbered(
+                  NeoCard(
                   child: Row(
                     children: [
                       // Аватар
@@ -122,7 +158,7 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
                       ),
                     ],
                   ),
-                ),
+                ), 1),
               ),
               const SizedBox(height: 12),
 
@@ -140,8 +176,11 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
                       ),
                     );
                   },
-                  child: NeoCard(
-                    child: _buildMainTopPanel(context),
+                  child: _numbered(
+                    NeoCard(
+                      child: _buildMainTopPanel(context),
+                    ),
+                    2,
                   ),
                 ),
               ),
@@ -159,7 +198,8 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
                     ),
                   );
                 },
-                child: NeoCard(
+                child: _numbered(
+                  NeoCard(
                   child: GridView(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -178,7 +218,7 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
                       }),
                     ],
                   ),
-                ),
+                ), 3),
               ),
             ],
           ),
@@ -205,8 +245,11 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
                       ),
                     );
                   },
-                  child: NeoCard(
-                    child: _buildRightTopPanel(context),
+                  child: _numbered(
+                    NeoCard(
+                      child: _buildRightTopPanel(context),
+                    ),
+                    4,
                   ),
                 ),
               ),
@@ -226,8 +269,11 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
                       ),
                     );
                   },
-                  child: const NeoCard(
-                    child: PatientCountsWidget(),
+                  child: _numbered(
+                    NeoCard(
+                      child: const PatientCountsWidget(),
+                    ),
+                    5,
                   ),
                 ),
               ),
@@ -619,7 +665,7 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> with SingleTick
 
   // Верхняя основная панель (теперь отображает статистику по процедурам)
   Widget _buildMainTopPanel(BuildContext context, {bool isPortrait = false}) {
-    return TreatmentStatsWidget(isPortrait: isPortrait);
+    return TodayStatsWidget(isPortrait: isPortrait);
   }
 
   // Нижняя основная панель (пока как заглушка, но в неоморфном контейнере)

@@ -16,6 +16,15 @@ class DashboardState {
   final AsyncValue<int> implantsMonthCount;
   final AsyncValue<int> implantsYearCount;
 
+  // Сегодня: импланты/сканы/все процедуры
+  final AsyncValue<int> implantsTodayCount;
+  final AsyncValue<int> scansTodayCount;
+  final AsyncValue<int> allProceduresTodayCount;
+  final AsyncValue<Map<String, int>> proceduresTodayByType;
+  final AsyncValue<Map<String, int>> patientsTodayByType;
+  final AsyncValue<Map<String, int>> proceduresWeekByType;
+  final AsyncValue<Map<String, int>> patientsWeekByType;
+
   // Новые показатели: пациенты с ровно одним имплантом
   final AsyncValue<int> oneImplantPatientsMonthCount;
   final AsyncValue<int> oneImplantPatientsYearCount;
@@ -30,6 +39,13 @@ class DashboardState {
     required this.hotPatientCount,
     required this.implantsMonthCount,
     required this.implantsYearCount,
+    required this.implantsTodayCount,
+    required this.scansTodayCount,
+    required this.allProceduresTodayCount,
+    required this.proceduresTodayByType,
+    required this.patientsTodayByType,
+    required this.proceduresWeekByType,
+    required this.patientsWeekByType,
     required this.crownAbutmentMonthCount,
     required this.crownAbutmentYearCount,
     required this.oneImplantPatientsMonthCount,
@@ -43,6 +59,13 @@ class DashboardState {
         hotPatientCount: AsyncValue.loading(),
         implantsMonthCount: AsyncValue.loading(),
         implantsYearCount: AsyncValue.loading(),
+        implantsTodayCount: AsyncValue.loading(),
+        scansTodayCount: AsyncValue.loading(),
+        allProceduresTodayCount: AsyncValue.loading(),
+        proceduresTodayByType: AsyncValue.loading(),
+        patientsTodayByType: AsyncValue.loading(),
+        proceduresWeekByType: AsyncValue.loading(),
+        patientsWeekByType: AsyncValue.loading(),
         crownAbutmentMonthCount: AsyncValue.loading(),
         crownAbutmentYearCount: AsyncValue.loading(),
         oneImplantPatientsMonthCount: AsyncValue.loading(),
@@ -56,6 +79,13 @@ class DashboardState {
     AsyncValue<int>? hotPatientCount,
     AsyncValue<int>? implantsMonthCount,
     AsyncValue<int>? implantsYearCount,
+    AsyncValue<int>? implantsTodayCount,
+    AsyncValue<int>? scansTodayCount,
+    AsyncValue<int>? allProceduresTodayCount,
+    AsyncValue<Map<String, int>>? proceduresTodayByType,
+    AsyncValue<Map<String, int>>? patientsTodayByType,
+    AsyncValue<Map<String, int>>? proceduresWeekByType,
+    AsyncValue<Map<String, int>>? patientsWeekByType,
     AsyncValue<int>? crownAbutmentMonthCount,
     AsyncValue<int>? crownAbutmentYearCount,
     AsyncValue<int>? oneImplantPatientsMonthCount,
@@ -68,6 +98,18 @@ class DashboardState {
       hotPatientCount: hotPatientCount ?? this.hotPatientCount,
       implantsMonthCount: implantsMonthCount ?? this.implantsMonthCount,
       implantsYearCount: implantsYearCount ?? this.implantsYearCount,
+      implantsTodayCount: implantsTodayCount ?? this.implantsTodayCount,
+      scansTodayCount: scansTodayCount ?? this.scansTodayCount,
+      allProceduresTodayCount:
+          allProceduresTodayCount ?? this.allProceduresTodayCount,
+      proceduresTodayByType:
+          proceduresTodayByType ?? this.proceduresTodayByType,
+      patientsTodayByType:
+          patientsTodayByType ?? this.patientsTodayByType,
+      proceduresWeekByType:
+          proceduresWeekByType ?? this.proceduresWeekByType,
+      patientsWeekByType:
+          patientsWeekByType ?? this.patientsWeekByType,
       crownAbutmentMonthCount:
           crownAbutmentMonthCount ?? this.crownAbutmentMonthCount,
       crownAbutmentYearCount:
@@ -85,6 +127,13 @@ class DashboardController extends StateNotifier<DashboardState> {
   StreamSubscription? _patientsSub;
   StreamSubscription? _implantsMonthSub;
   StreamSubscription? _implantsYearSub;
+  StreamSubscription? _implantsTodaySub;
+  StreamSubscription? _scansTodaySub;
+  StreamSubscription? _allTodaySub;
+  StreamSubscription? _todayByTypeSub;
+  StreamSubscription? _patientsTodayByTypeSub;
+  StreamSubscription? _weekByTypeSub;
+  StreamSubscription? _patientsWeekByTypeSub;
   StreamSubscription? _crownAbMonthSub;
   StreamSubscription? _crownAbYearSub;
   StreamSubscription? _oneImplantMonthSub;
@@ -133,6 +182,65 @@ class DashboardController extends StateNotifier<DashboardState> {
       );
     }, onError: (e, st) {
       state = state.copyWith(implantsYearCount: AsyncValue.error(e, st));
+    });
+
+    // Сегодня: импланты/скан/все
+    _implantsTodaySub = _repo
+        .watchTreatmentCountsForToday(types: implantTypes)
+        .listen((counts) {
+      state = state.copyWith(
+        implantsTodayCount: AsyncValue.data(counts.totalTeeth),
+      );
+    }, onError: (e, st) {
+      state = state.copyWith(implantsTodayCount: AsyncValue.error(e, st));
+    });
+
+    _scansTodaySub = _repo
+        .watchTreatmentCountsForToday(types: {TreatmentType.scan})
+        .listen((counts) {
+      state = state.copyWith(
+        scansTodayCount: AsyncValue.data(counts.totalTeeth),
+      );
+    }, onError: (e, st) {
+      state = state.copyWith(scansTodayCount: AsyncValue.error(e, st));
+    });
+
+    _allTodaySub = _repo.watchTreatmentCountsForToday().listen((counts) {
+      state = state.copyWith(
+        allProceduresTodayCount: AsyncValue.data(counts.totalTeeth),
+      );
+    }, onError: (e, st) {
+      state = state.copyWith(
+          allProceduresTodayCount: AsyncValue.error(e, st));
+    });
+
+    _todayByTypeSub = _repo.watchTodayTeethCountsByRawType().listen((map) {
+      state = state.copyWith(proceduresTodayByType: AsyncValue.data(map));
+    }, onError: (e, st) {
+      state = state.copyWith(
+          proceduresTodayByType: AsyncValue.error(e, st));
+    });
+
+    _patientsTodayByTypeSub =
+        _repo.watchTodayUniquePatientsByRawType().listen((map) {
+      state = state.copyWith(patientsTodayByType: AsyncValue.data(map));
+    }, onError: (e, st) {
+      state = state.copyWith(patientsTodayByType: AsyncValue.error(e, st));
+    });
+
+    _weekByTypeSub =
+        _repo.watchCurrentWeekTeethCountsByRawType().listen((map) {
+      state = state.copyWith(proceduresWeekByType: AsyncValue.data(map));
+    }, onError: (e, st) {
+      state =
+          state.copyWith(proceduresWeekByType: AsyncValue.error(e, st));
+    });
+
+    _patientsWeekByTypeSub =
+        _repo.watchCurrentWeekUniquePatientsByRawType().listen((map) {
+      state = state.copyWith(patientsWeekByType: AsyncValue.data(map));
+    }, onError: (e, st) {
+      state = state.copyWith(patientsWeekByType: AsyncValue.error(e, st));
     });
 
     // Пациенты с ровно 1 имплантом: за месяц/год
@@ -187,6 +295,13 @@ class DashboardController extends StateNotifier<DashboardState> {
     _patientsSub?.cancel();
     _implantsMonthSub?.cancel();
     _implantsYearSub?.cancel();
+    _implantsTodaySub?.cancel();
+    _scansTodaySub?.cancel();
+    _allTodaySub?.cancel();
+    _todayByTypeSub?.cancel();
+    _patientsTodayByTypeSub?.cancel();
+    _weekByTypeSub?.cancel();
+    _patientsWeekByTypeSub?.cancel();
     _crownAbMonthSub?.cancel();
     _crownAbYearSub?.cancel();
     _oneImplantMonthSub?.cancel();

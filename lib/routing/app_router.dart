@@ -7,6 +7,8 @@ import '../search_screen.dart';
 import '../reports_screen.dart';
 import '../patient_details_screen.dart';
 import '../design_system/design_system_screen.dart';
+import '../screens/treatment_types_screen.dart';
+import '../ui/screens/clinic_home_v2.dart';
 
 /// Определение всех route names для типобезопасного использования.
 abstract class AppRoutes {
@@ -21,8 +23,13 @@ abstract class AppRoutes {
 /// Центральный GoRouter приложения.
 /// Позже его можно расширить guard-ами, редиректами и пр.
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/home-v2',
   routes: [
+    // Preview of ClinicHomeV2 (Canvas B)
+    GoRoute(
+      path: '/home-v2',
+      builder: (context, state) => const ClinicHomeV2(),
+    ),
     // Витрина дизайн‑системы (отдельный корневой маршрут)
     GoRoute(
       path: '/design-system',
@@ -61,6 +68,10 @@ final GoRouter appRouter = GoRouter(
           name: AppRoutes.reports,
           path: 'reports',
           builder: (context, state) => ReportsScreen(),
+        ),
+        GoRoute(
+          path: 'types',
+          builder: (context, state) => const TreatmentTypesScreen(),
         ),
       ],
     ),

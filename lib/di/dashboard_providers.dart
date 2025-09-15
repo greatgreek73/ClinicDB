@@ -63,4 +63,29 @@ class MockDashboardRepository implements DashboardRepository {
   Stream<int> watchOneImplantPatientsCountForCurrentYear() {
     return Stream.value(0);
   }
+
+  @override
+  Stream<TreatmentCounts> watchTreatmentCountsForToday({Set<TreatmentType>? types}) {
+    return Stream.value(TreatmentCounts.empty());
+  }
+
+  @override
+  Stream<Map<String, int>> watchTodayTeethCountsByRawType() {
+    return Stream.value(const <String, int>{});
+  }
+
+  @override
+  Stream<Map<String, int>> watchTodayUniquePatientsByRawType() {
+    return Stream.value(const <String, int>{});
+  }
+
+  @override
+  Stream<Map<String, int>> watchCurrentWeekTeethCountsByRawType() {
+    return Stream.value(const <String, int>{});
+  }
+
+  @override
+  Stream<Map<String, int>> watchCurrentWeekUniquePatientsByRawType() {
+    return Stream.value(const <String, int>{});
+  }
 }
