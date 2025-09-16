@@ -259,7 +259,7 @@ class _TodayProceduresState extends ConsumerState<_TodayProcedures> {
         ? dashState.proceduresWeekByType
         : dashState.proceduresTodayByType;
 
-    final patientsByType = (isWeek
+    final Map<String, int> patientsByType = (isWeek
             ? dashState.patientsWeekByType
             : dashState.patientsTodayByType)
         .maybeWhen(
@@ -324,12 +324,11 @@ class _TodayProceduresState extends ConsumerState<_TodayProcedures> {
                   final isFirst = i == 0;
                   final isLast = i == entries.length - 1;
                   final total = e.value;
-                  final patients = patientsByType[e.key];
+                  final patientCount = patientsByType[e.key];
 
-                  // Show only patients count in thin subtitle; hide when unknown
-                  final displaySubtitle = patients == null
+                  final displaySubtitle = patientCount == null
                       ? ''
-                      : '$patients patients';
+                      : '$patientCount ${patientCount == 1 ? "patient" : "patients"}';
 
                   return _TimelineTile(
                     isFirst: isFirst,
@@ -374,9 +373,10 @@ class _TodayProceduresState extends ConsumerState<_TodayProcedures> {
       },
     );
   }
+
 }
 
-/// Timeline list tile: left rail (line + dot) + content
+/// Timeline list tile: dot marker + content
 class _TimelineTile extends StatelessWidget {
   final bool isFirst;
   final bool isLast;
