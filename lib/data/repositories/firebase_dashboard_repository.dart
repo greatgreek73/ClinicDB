@@ -26,7 +26,8 @@ class FirebaseDashboardRepository implements DashboardRepository {
       final data = doc.data();
       final String patientId = (data['patientId'] as String?) ?? '';
       if (patientId.isEmpty) continue;
-      final List<dynamic> toothNumbersDyn = List.from(data['toothNumber'] ?? []);
+      final List<dynamic> toothNumbersDyn =
+          (data['toothNumber'] as List?)?.toList() ?? const <dynamic>[];
       final int implantsInThisTreatment = toothNumbersDyn.length;
       perPatient.update(patientId, (v) => v + implantsInThisTreatment, ifAbsent: () => implantsInThisTreatment);
     }
@@ -277,6 +278,58 @@ class FirebaseDashboardRepository implements DashboardRepository {
       final counts = <String, int>{};
       map.forEach((k, v) => counts[k] = v.length);
       return Map.unmodifiable(counts);
+    });
+  }
+
+  @override
+  Stream<Map<String, List<String>>> watchTodayPatientIdsByRawType() {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    final query = _db
+        .collection('treatments')
+        .where('date', isGreaterThanOrEqualTo: start)
+        .where('date', isLessThanOrEqualTo: end);
+
+    return query.snapshots().map((snap) {
+      final map = <String, Set<String>>{};
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final rawType = data['treatmentType'];
+        final String type = rawType is String ? rawType : rawType?.toString() ?? 'unknown';
+        final String patientId = (data['patientId'] as String?) ?? '';
+        if (patientId.isEmpty) continue;
+        map.putIfAbsent(type, () => <String>{}).add(patientId);
+      }
+      return Map.unmodifiable(
+        map.map((k, v) => MapEntry(k, List<String>.unmodifiable(v))),
+      );
+    });
+  }
+
+  @override
+  Stream<Map<String, List<String>>> watchCurrentWeekPatientIdsByRawType() {
+    final range = _currentWeekRange();
+    final query = _db
+        .collection('treatments')
+        .where('date', isGreaterThanOrEqualTo: range.start)
+        .where('date', isLessThanOrEqualTo: range.end);
+
+    return query.snapshots().map((snap) {
+      final map = <String, Set<String>>{};
+      for (final doc in snap.docs) {
+        final rawData = doc.data();
+        final rawType = rawData['treatmentType'];
+        final String type =
+            rawType is String ? rawType : rawType?.toString() ?? 'unknown';
+        final String patientId = (rawData['patientId'] as String?) ?? '';
+        if (patientId.isEmpty) continue;
+        map.putIfAbsent(type, () => <String>{}).add(patientId);
+      }
+      return Map.unmodifiable(
+        map.map((k, v) => MapEntry(k, List<String>.unmodifiable(v))),
+      );
     });
   }
 }

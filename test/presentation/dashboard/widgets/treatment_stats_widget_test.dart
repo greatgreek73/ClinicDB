@@ -157,4 +157,32 @@ class _DummyRepo implements DashboardRepository {
   @override
   Stream<TreatmentCounts> watchTreatmentCountsForCurrentYear({Set<TreatmentType>? types}) =>
       const Stream.empty();
+
+  @override
+  Stream<TreatmentCounts> watchTreatmentCountsForToday({Set<TreatmentType>? types}) =>
+      const Stream.empty();
+
+  @override
+  Stream<Map<String, int>> watchTodayTeethCountsByRawType() => const Stream.empty();
+
+  @override
+  Stream<Map<String, int>> watchTodayUniquePatientsByRawType() => const Stream.empty();
+
+  @override
+  Stream<Map<String, int>> watchCurrentWeekTeethCountsByRawType() => const Stream.empty();
+
+  @override
+  Stream<Map<String, int>> watchCurrentWeekUniquePatientsByRawType() => const Stream.empty();
+
+  @override
+  Stream<Map<String, List<String>>> watchTodayPatientIdsByRawType() => const Stream.empty();
+
+  @override
+  Stream<Map<String, List<String>>> watchCurrentWeekPatientIdsByRawType() => const Stream.empty();
+
+  @override
+  Stream<int> watchOneImplantPatientsCountForCurrentMonth() => const Stream.empty();
+
+  @override
+  Stream<int> watchOneImplantPatientsCountForCurrentYear() => const Stream.empty();
 }

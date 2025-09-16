@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../presentation/dashboard/dashboard_controller.dart';
+import '../../domain/models/patient.dart';
 
 /// Canvas layout (Variant B) — tablet portrait approximation
 class ClinicHomeV2 extends StatelessWidget {
@@ -267,6 +268,14 @@ class _TodayProceduresState extends ConsumerState<_TodayProcedures> {
       orElse: () => const <String, int>{},
     );
 
+    final Map<String, List<String>> patientIdsByType = (isWeek
+            ? dashState.patientIdsWeekByType
+            : dashState.patientIdsTodayByType)
+        .maybeWhen(
+      data: (m) => m,
+      orElse: () => const <String, List<String>>{},
+    );
+
     return proceduresAsync.when(
       loading: () => const Center(
         child: SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2)),
@@ -330,12 +339,20 @@ class _TodayProceduresState extends ConsumerState<_TodayProcedures> {
                       ? ''
                       : '$patientCount ${patientCount == 1 ? "patient" : "patients"}';
 
+                  final patientIds = patientIdsByType[e.key] ?? const <String>[];
+
                   return _TimelineTile(
                     isFirst: isFirst,
                     isLast: isLast,
                     title: e.key,
                     subtitle: displaySubtitle,
                     totalChipText: '$total',
+                    onTap: () => _showProcedurePatientsDialog(
+                      context,
+                      e.key,
+                      patientIds,
+                      isWeek,
+                    ),
                   );
                 },
               ),
@@ -374,6 +391,109 @@ class _TodayProceduresState extends ConsumerState<_TodayProcedures> {
     );
   }
 
+  void _showProcedurePatientsDialog(
+    BuildContext outerContext,
+    String procedureName,
+    List<String> patientIds,
+    bool isWeek,
+  ) {
+    showDialog<void>(
+      context: outerContext,
+      builder: (dialogContext) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final patientsState = ref.watch(
+              dashboardControllerProvider.select((s) => s.patients),
+            );
+
+            Widget content;
+            if (patientIds.isEmpty) {
+              content = const Text('No patients recorded for this procedure.');
+            } else {
+              content = patientsState.when(
+                loading: () => const SizedBox(
+                  height: 80,
+                  width: 80,
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+                error: (_, __) => const Text('Unable to load patient details.'),
+                data: (patientList) {
+                  final lookup = {
+                    for (final patient in patientList) patient.id: patient,
+                  };
+                  final resolvedPatients = <Patient>[];
+                  final missingIds = <String>[];
+
+                  for (final id in patientIds) {
+                    final patient = lookup[id];
+                    if (patient != null) {
+                      resolvedPatients.add(patient);
+                    } else {
+                      missingIds.add(id);
+                    }
+                  }
+
+                  resolvedPatients.sort(
+                    (a, b) => (a.name ?? a.id).compareTo(b.name ?? b.id),
+                  );
+
+                  if (resolvedPatients.isEmpty && missingIds.isEmpty) {
+                    return const Text('No patients recorded for this procedure.');
+                  }
+
+                  final tiles = <Widget>[];
+                  for (final patient in resolvedPatients) {
+                    final displayName =
+                        (patient.name != null && patient.name!.isNotEmpty) ? patient.name! : 'Patient ${patient.id}';
+                    tiles.add(
+                      ListTile(
+                        title: Text(displayName),
+                        subtitle: Text('ID: ${patient.id}'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.of(dialogContext).pop();
+                          outerContext.push('/patient/${patient.id}');
+                        },
+                      ),
+                    );
+                  }
+                  for (final id in missingIds) {
+                    tiles.add(
+                      ListTile(
+                        title: Text('Unknown patient ($id)'),
+                        enabled: false,
+                      ),
+                    );
+                  }
+
+                  return ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 360, maxHeight: 320),
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: tiles,
+                    ),
+                  );
+                },
+              );
+            }
+
+            return AlertDialog(
+              title: Text('$procedureName • ${isWeek ? 'This week' : 'Today'}'),
+              content: SizedBox(width: 360, child: content),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 /// Timeline list tile: dot marker + content
@@ -383,6 +503,7 @@ class _TimelineTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final String totalChipText;
+  final VoidCallback? onTap;
 
   const _TimelineTile({
     required this.isFirst,
@@ -390,71 +511,81 @@ class _TimelineTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.totalChipText,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return IntrinsicHeight( // ensures the rail stretches to content height
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Left rail now only keeps centered dot marker
-          SizedBox(
-            width: 26, // gutter width for the marker
-            child: Center(
-              child: Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFF2563EB), // blue-600 to match summary chip
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-
-          // Content block
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: IntrinsicHeight( // ensures the rail stretches to content height
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Title + chip with total
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: theme.textTheme.titleMedium?.copyWith(color: Colors.black87),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
+                // Left rail now only keeps centered dot marker
+                SizedBox(
+                  width: 26, // gutter width for the marker
+                  child: Center(
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF2563EB), // blue-600 to match summary chip
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: Text(totalChipText, style: theme.textTheme.titleMedium),
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 2),
-                // Thin subtitle
-                Text(
-                  subtitle,
-                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54, height: 1.2),
+                const SizedBox(width: 8),
+
+                // Content block
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title + chip with total
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: theme.textTheme.titleMedium?.copyWith(color: Colors.black87),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFE5E7EB)),
+                            ),
+                            child: Text(totalChipText, style: theme.textTheme.titleMedium),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      // Thin subtitle
+                      Text(
+                        subtitle,
+                        style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54, height: 1.2),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
-

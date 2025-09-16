@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import '../models/patient.dart';
 import '../models/treatment_counts.dart';
 import '../models/treatment_type.dart';
@@ -54,4 +53,10 @@ abstract class DashboardRepository {
 
   /// Наблюдение: количество уникальных пациентов за текущую неделю по каждому типу процедур.
   Stream<Map<String, int>> watchCurrentWeekUniquePatientsByRawType();
+
+  /// Наблюдение: уникальные идентификаторы пациентов за сегодня по каждому типу процедур.
+  Stream<Map<String, List<String>>> watchTodayPatientIdsByRawType();
+
+  /// Наблюдение: уникальные идентификаторы пациентов за текущую неделю по каждому типу процедур.
+  Stream<Map<String, List<String>>> watchCurrentWeekPatientIdsByRawType();
 }
